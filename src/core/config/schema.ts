@@ -26,6 +26,20 @@ export const configFileSchema = z
     rules: z.record(z.string(), ruleSetting).optional(),
     failOn: z.union([severity, z.literal('none')]).optional(),
     minConfidence: confidence.optional(),
+    discovery: z
+      .object({
+        skipBuildOutput: z.boolean().optional(),
+        buildOutputDirs: z
+          .array(
+            z
+              .string()
+              .min(1)
+              .regex(/^[^/\\]+$/, 'must be a directory name, not a path'),
+          )
+          .optional(),
+      })
+      .strict()
+      .optional(),
     supabase: z
       .object({
         migrationsDirs: z.array(z.string().min(1)).optional(),

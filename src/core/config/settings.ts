@@ -1,3 +1,4 @@
+import { DEFAULT_BUILD_OUTPUT_DIRS } from '../discovery/file-kind.ts';
 import type { Confidence, Severity } from '../findings/severity.ts';
 import type { ConfigFile, RuleSetting } from './schema.ts';
 
@@ -7,6 +8,10 @@ export interface Settings {
   readonly rules: Readonly<Record<string, RuleSetting>>;
   readonly failOn: Severity | 'none';
   readonly minConfidence: Confidence;
+  readonly discovery: {
+    readonly skipBuildOutput: boolean;
+    readonly buildOutputDirs: readonly string[];
+  };
   readonly supabase: {
     readonly migrationsDirs: readonly string[];
     /** `undefined` means "derive from supabase/config.toml, else ['public']". */
@@ -23,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   rules: {},
   failOn: 'high',
   minConfidence: 'low',
+  discovery: { skipBuildOutput: true, buildOutputDirs: DEFAULT_BUILD_OUTPUT_DIRS },
   supabase: { migrationsDirs: ['supabase/migrations'], exposedSchemas: undefined },
   endpoints: { authFunctions: [], rateLimitFunctions: [] },
 };
@@ -39,6 +45,10 @@ export function resolveSettings(file: ConfigFile | undefined, cli: CliOverrides 
     rules: file?.rules ?? d.rules,
     failOn: cli.failOn ?? file?.failOn ?? d.failOn,
     minConfidence: cli.minConfidence ?? file?.minConfidence ?? d.minConfidence,
+    discovery: {
+      skipBuildOutput: file?.discovery?.skipBuildOutput ?? d.discovery.skipBuildOutput,
+      buildOutputDirs: file?.discovery?.buildOutputDirs ?? d.discovery.buildOutputDirs,
+    },
     supabase: {
       migrationsDirs: file?.supabase?.migrationsDirs ?? d.supabase.migrationsDirs,
       exposedSchemas: file?.supabase?.exposedSchemas ?? d.supabase.exposedSchemas,
@@ -60,4 +70,9 @@ export function isRuleEnabled(settings: Settings, ruleId: string): boolean {
 export function severityOverride(settings: Settings, ruleId: string): Severity | undefined {
   const s = settings.rules[ruleId];
   return typeof s === 'object' ? s.severity : undefined;
+}
+
+/** Directory names the walker should skip as build output under these settings. */
+export function effectiveBuildOutputDirs(settings: Settings): readonly string[] {
+  return settings.discovery.skipBuildOutput ? settings.discovery.buildOutputDirs : [];
 }

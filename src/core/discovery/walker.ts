@@ -2,7 +2,12 @@ import { opendir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import ignore from 'ignore';
 import type { Diagnostic } from '../findings/finding.ts';
-import { classifyFile, HARD_SKIP_DIRS, type FileKind } from './file-kind.ts';
+import {
+  ALWAYS_SKIP_DIRS,
+  classifyFile,
+  DEFAULT_BUILD_OUTPUT_DIRS,
+  type FileKind,
+} from './file-kind.ts';
 import { findGitRoot, listGitTrackedFiles } from './git-tracked.ts';
 import { isIgnoredByScopes, loadIgnoreFile, type IgnoreScope } from './gitignore.ts';
 
@@ -22,6 +27,11 @@ export interface DiscoveryOptions {
   readonly root: string;
   /** Extra gitignore-syntax patterns from config, relative to the root. */
   readonly ignorePatterns?: readonly string[];
+  /**
+   * Directory names (matched at any depth) treated as build output and skipped.
+   * Defaults to DEFAULT_BUILD_OUTPUT_DIRS; pass [] to scan build output.
+   */
+  readonly buildOutputDirs?: readonly string[];
   /** Files above this size are skipped with a diagnostic. */
   readonly maxFileBytes?: number;
 }
@@ -54,6 +64,10 @@ export async function discoverFiles(opts: DiscoveryOptions): Promise<DiscoveryRe
     throw new Error(`Scan root is not a directory: ${opts.root}`);
   }
   const maxBytes = opts.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
+  const skipDirs = new Set([
+    ...ALWAYS_SKIP_DIRS,
+    ...(opts.buildOutputDirs ?? DEFAULT_BUILD_OUTPUT_DIRS),
+  ]);
   const diagnostics: Diagnostic[] = [];
   const files: FileRecord[] = [];
 
@@ -145,7 +159,7 @@ export async function discoverFiles(opts: DiscoveryOptions): Promise<DiscoveryRe
           continue;
         }
         if (entry.isDirectory()) {
-          if (HARD_SKIP_DIRS.has(entry.name)) continue;
+          if (skipDirs.has(entry.name)) continue;
           if (isIgnoredByScopes(rel, true, effective) && !trackedDirs.has(rel)) {
             // Git never descends into an ignored directory, so its files cannot be
             // un-ignored; skipping it keeps big ignored trees (caches, vendored output) cheap.

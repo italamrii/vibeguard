@@ -5,30 +5,41 @@ export type FileKind =
 
 export const CODE_KINDS: readonly FileKind[] = ['ts', 'tsx', 'js', 'jsx'];
 
-/** Directories that are never scanned: dependencies, VCS data and build output. */
-export const HARD_SKIP_DIRS: ReadonlySet<string> = new Set([
+/**
+ * Directories that are never scanned: dependencies and version-control data. These hold
+ * no first-party code, and scanning them would bury real findings in third-party noise.
+ */
+export const ALWAYS_SKIP_DIRS: ReadonlySet<string> = new Set([
   'node_modules',
   '.git',
   '.hg',
   '.svn',
-  '.next',
-  '.nuxt',
-  '.svelte-kit',
-  '.vercel',
-  '.netlify',
-  '.turbo',
-  '.output',
-  '.expo',
-  '.cache',
-  '.parcel-cache',
   '.yarn',
   '.pnpm-store',
+]);
+
+/**
+ * Build output and tool caches, skipped by default (`discovery.skipBuildOutput: true`).
+ * Configurable because some projects keep hand-written code in a folder named `build/`
+ * or `out/`, and some users want to inspect built bundles for leaked values.
+ */
+export const DEFAULT_BUILD_OUTPUT_DIRS: readonly string[] = [
   'dist',
   'build',
   'out',
   'coverage',
   'storybook-static',
-]);
+  '.next',
+  '.nuxt',
+  '.svelte-kit',
+  '.output',
+  '.vercel',
+  '.netlify',
+  '.turbo',
+  '.expo',
+  '.cache',
+  '.parcel-cache',
+];
 
 /** Files that are machine-generated and cannot contain hand-written secrets or logic. */
 const SKIP_FILE_NAMES: ReadonlySet<string> = new Set([

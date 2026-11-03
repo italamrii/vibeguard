@@ -6,7 +6,7 @@ import { gitInit, makeProject } from '../../helpers/project.ts';
 
 const rels = async (
   root: string,
-  opts: { ignorePatterns?: string[]; maxFileBytes?: number } = {},
+  opts: { ignorePatterns?: string[]; maxFileBytes?: number; buildOutputDirs?: string[] } = {},
 ) => (await discoverFiles({ root, ...opts })).files.map((f) => f.relPath);
 
 describe('discoverFiles', () => {
@@ -22,6 +22,19 @@ describe('discoverFiles', () => {
       'README.md': 'x',
     });
     expect(await rels(root)).toEqual(['README.md', 'src/a.ts']);
+  });
+
+  it('can scan build output when configured, but never dependency directories', async () => {
+    const root = await makeProject({
+      'build/scripts/release.ts': 'x',
+      'dist/out.js': 'x',
+      'node_modules/pkg/index.js': 'x',
+    });
+    expect(await rels(root, { buildOutputDirs: [] })).toEqual([
+      'build/scripts/release.ts',
+      'dist/out.js',
+    ]);
+    expect(await rels(root, { buildOutputDirs: ['dist'] })).toEqual(['build/scripts/release.ts']);
   });
 
   it('respects nested .gitignore files and negations', async () => {

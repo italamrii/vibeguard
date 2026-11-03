@@ -43,3 +43,17 @@ project; never execute project code.
   from "respect .gitignore".
 - Files inside a symlinked directory are not scanned. A monorepo that symlinks packages
   should scan each package root directly.
+
+## Amendment (2026-11-03): build-output skipping is configurable
+
+The original decision hard-coded `dist`, `build`, `out` and similar directories as skipped.
+That hides hand-written code that some projects keep in a folder named `build/` or `out/`,
+and it prevents users from deliberately inspecting built bundles. The skip set is now split:
+
+- `ALWAYS_SKIP_DIRS`: dependencies and VCS data (`node_modules`, `.git`, …). Not configurable.
+- `DEFAULT_BUILD_OUTPUT_DIRS`: build output and tool caches. Controlled by
+  `discovery.skipBuildOutput` (default `true`) and `discovery.buildOutputDirs` (directory
+  names, not paths). See `docs/configuration.md`.
+
+Turning skipping off can only add files to a scan, so the scanned repository's control over
+this setting cannot weaken detection.

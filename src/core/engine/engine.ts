@@ -1,4 +1,9 @@
-import { isRuleEnabled, severityOverride, type Settings } from '../config/settings.ts';
+import {
+  effectiveBuildOutputDirs,
+  isRuleEnabled,
+  severityOverride,
+  type Settings,
+} from '../config/settings.ts';
 import { discoverFiles, type FileRecord } from '../discovery/walker.ts';
 import type { Diagnostic, Finding, FindingInput } from '../findings/finding.ts';
 import { fingerprint } from '../findings/fingerprint.ts';
@@ -58,7 +63,11 @@ export async function scan(opts: ScanOptions): Promise<ScanResult> {
   validateRules(opts.rules);
   const { settings } = opts;
 
-  const discovery = await discoverFiles({ root: opts.root, ignorePatterns: settings.ignore });
+  const discovery = await discoverFiles({
+    root: opts.root,
+    ignorePatterns: settings.ignore,
+    buildOutputDirs: effectiveBuildOutputDirs(settings),
+  });
   const ctx = new ProjectContext(discovery.root, settings, discovery.files);
   const enabled = opts.rules.filter((r) => isRuleEnabled(settings, r.meta.id));
 
