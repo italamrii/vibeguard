@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an improvement within the three v1 rule families (secrets, Supabase RLS, endpoints).
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        VibeGuard v1 deliberately has exactly three rule families. Detection ideas outside
+        them are welcome, but will be considered for a later version.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What vulnerable pattern, framework or workflow is not covered today?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Vulnerable and safe examples (fake values only)
+      render: ts
+  - type: textarea
+    id: fp
+    attributes:
+      label: Possible false positives
+      description: What safe code looks similar? How could the rule tell them apart?

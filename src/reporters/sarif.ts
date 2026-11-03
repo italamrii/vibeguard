@@ -38,7 +38,7 @@ export const FINGERPRINT_KEY = 'vibeguard/v1';
 export const MAX_RESULTS_PER_RUN = 25_000;
 
 /** GitHub: >= 9.0 critical, 7.0-8.9 high, 4.0-6.9 medium, 0.1-3.9 low. */
-const SECURITY_SEVERITY: Readonly<Record<Severity, string>> = {
+export const SECURITY_SEVERITY: Readonly<Record<Severity, string>> = {
   critical: '9.5',
   high: '8.0',
   medium: '5.5',

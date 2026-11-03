@@ -1,0 +1,40 @@
+name: Bug report
+description: A crash, wrong output, missed detection (false negative) or other bug.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste real secrets, credentials or private code.** Use fake values.
+        Security vulnerabilities in VibeGuard itself go to SECURITY.md, not here.
+  - type: input
+    id: version
+    attributes:
+      label: VibeGuard version
+      placeholder: output of `vibeguard --version`
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Node.js version and OS
+      placeholder: Node 22.x, macOS 15
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction (fake values only)

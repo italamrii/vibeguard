@@ -1,7 +1,8 @@
 # Pre-release check: upload VibeGuard SARIF to GitHub code scanning for real.
 # Manual only (workflow_dispatch). Code scanning requires a public repository or GitHub
 # Advanced Security. Results come from the intentionally vulnerable *fixture* apps, so the
-# alerts it creates are synthetic: dismiss them (or delete the analysis) after checking.
+# alerts it creates are synthetic. Run it only in a throwaway repository (see
+# docs/release-checklist.md), never in italamrii/vibeguard itself: the job refuses to run there.
 name: Code scanning upload (manual)
 on:
   workflow_dispatch:
@@ -12,6 +13,8 @@ permissions:
 
 jobs:
   upload:
+    # Synthetic fixture alerts must never land in the real, public repository.
+    if: github.repository != 'italamrii/vibeguard'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
