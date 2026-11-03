@@ -9,6 +9,11 @@ import { REPORTERS } from '../../src/reporters/index.ts';
 import { ALL_RULES } from '../../src/rules/index.ts';
 import { compare, readExpectations } from '../helpers/accuracy.ts';
 import { buildFixtures, type BuiltFixtures } from '../helpers/fixtures.ts';
+import { sarifSchemaErrors } from '../helpers/sarif-validator.ts';
+import { checkGitHubSarif } from '../../src/reporters/sarif-github.ts';
+import { sarifReporter } from '../../src/reporters/sarif.ts';
+import { markdownReporter } from '../../src/reporters/markdown.ts';
+import { findUnisolatedLtr } from '../../src/i18n/bidi.ts';
 
 let outDir: string;
 let built: BuiltFixtures;
@@ -130,5 +135,31 @@ describe('redaction canary', () => {
       }
     }
     expect(rendered).toBe(3 * REPORTERS.size * LOCALES.length);
+  });
+});
+
+describe('report formats on every fixture app', () => {
+  const opts = (locale: 'en' | 'ar') => ({
+    locale,
+    color: false,
+    toolVersion: '0.1.0',
+    failOn: 'high' as const,
+    minConfidence: 'low' as const,
+  });
+
+  it('SARIF validates against the official schema and GitHub constraints, in both languages', () => {
+    for (const app of built.apps) {
+      for (const locale of ['en', 'ar'] as const) {
+        const out = sarifReporter.render(result(app), opts(locale));
+        expect(sarifSchemaErrors(out), `${app} ${locale}`).toEqual([]);
+        expect(checkGitHubSarif(out), `${app} ${locale}`).toEqual([]);
+      }
+    }
+  });
+
+  it('Arabic Markdown has no unisolated LTR run on any Arabic line', () => {
+    for (const app of built.apps) {
+      expect(findUnisolatedLtr(markdownReporter.render(result(app), opts('ar'))), app).toEqual([]);
+    }
   });
 });
