@@ -12,25 +12,25 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 
 ## Per rule
 
-| Rule | TP | FP | FN | of which known misses | Precision | Recall |
-| ---- | -: | -: | -: | -: | -: | -: |
-| `secrets/provider-key` | 27 | 0 | 1 | 1 | 100.0% | 96.4% |
-| `secrets/private-key` | 2 | 0 | 0 | 0 | 100.0% | 100.0% |
-| `secrets/high-entropy` | 7 | 0 | 0 | 0 | 100.0% | 100.0% |
-| `secrets/env-file-committed` | 3 | 0 | 0 | 0 | 100.0% | 100.0% |
-| `secrets/client-exposed-env` | 9 | 0 | 0 | 0 | 100.0% | 100.0% |
-| **All rules** | **48** | **0** | **1** | **1** | **100.0%** | **98.0%** |
+| Rule                         |     TP |    FP |    FN | of which known misses |  Precision |    Recall |
+| ---------------------------- | -----: | ----: | ----: | --------------------: | ---------: | --------: |
+| `secrets/provider-key`       |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
+| `secrets/private-key`        |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/high-entropy`       |      7 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/env-file-committed` |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/client-exposed-env` |      9 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| **All rules**                | **48** | **0** | **1** |                 **1** | **100.0%** | **98.0%** |
 
 ## Per app
 
-| App | Findings | TP | FP | FN | Scan complete |
-| --- | -: | -: | -: | -: | --- |
-| `express-api-clean` | 0 | 0 | 0 | 0 | yes |
-| `express-api-vuln` | 18 | 18 | 0 | 0 | yes |
-| `next-supabase-clean` | 0 | 0 | 0 | 0 | yes |
-| `next-supabase-vuln` | 17 | 17 | 0 | 1 | yes |
-| `vite-firebase-clean` | 0 | 0 | 0 | 0 | yes |
-| `vite-firebase-vuln` | 13 | 13 | 0 | 0 | yes |
+| App                   | Findings |  TP |  FP |  FN | Scan complete |
+| --------------------- | -------: | --: | --: | --: | ------------- |
+| `express-api-clean`   |        0 |   0 |   0 |   0 | yes           |
+| `express-api-vuln`    |       18 |  18 |   0 |   0 | yes           |
+| `next-supabase-clean` |        0 |   0 |   0 |   0 | yes           |
+| `next-supabase-vuln`  |       17 |  17 |   0 |   1 | yes           |
+| `vite-firebase-clean` |        0 |   0 |   0 |   0 | yes           |
+| `vite-firebase-vuln`  |       13 |  13 |   0 |   0 | yes           |
 
 ## Known misses
 

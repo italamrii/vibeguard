@@ -7,6 +7,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { format } from 'prettier';
 import { resolveSettings } from '../src/core/config/settings.ts';
 import { scan } from '../src/core/engine/engine.ts';
 import { ALL_RULES } from '../src/rules/index.ts';
@@ -98,8 +99,10 @@ Declared with \`vg-expect-miss\` in the fixtures:
   is not reassembled. Detection is per literal.
 `;
   const target = path.join(path.dirname(FIXTURES_DIR), 'docs', 'accuracy.md');
-  await writeFile(target, md);
-  console.log(md);
+  // Format like the rest of the repo so regenerating never breaks `prettier --check`.
+  const formatted = await format(md, { parser: 'markdown', filepath: target });
+  await writeFile(target, formatted);
+  console.log(formatted);
   if (problems.length > 0) {
     console.error(problems.join('\n'));
     if (values.check) process.exitCode = 1;
