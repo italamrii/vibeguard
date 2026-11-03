@@ -63,3 +63,44 @@ library catch-all handlers (`[...nextauth]`).
   (recommended anyway) or a suppression.
 - Names matter. A project-specific guard called `gate()` is invisible until listed in
   `endpoints.authFunctions`.
+
+## Amendment (2026-11-03): three-state auth, webhooks, more sinks
+
+Prompted by the principle that false positives are this family's biggest risk, and that
+undetermined auth must never silently pass or be overclaimed:
+
+- **Names are no longer trusted.** A helper whose _name_ looks like auth (`requireUser`,
+  `withAuth`, `authenticateAdminRequest`) is resolved one level (same file, local import,
+  Fastify `decorate`) and its body inspected:
+  - it calls a recognised auth API, or it reads a credential (cookie / Authorization header /
+    session) **and** has a rejection path (throw, 401/403, redirect, `return null`/`{ error }`)
+    → **strong**, no finding;
+  - it does neither → **notChecking**: reported (`wrapperDoesNotCheck`, medium confidence);
+  - it cannot be resolved (package import, deeper indirection) → **unverified**: reported at
+    **low confidence** with an explicit "unverified" message.
+    Imports from known auth packages (`next-auth`, `@clerk/*`, `jsonwebtoken`, `jose`,
+    `firebase-admin`, `@supabase/*`, `lucia`, `better-auth`, …) are strong whatever their local
+    name. Names listed in `endpoints.authFunctions` are trusted.
+- **`supabase.auth.getSession()` alone is weak** (it does not verify the JWT with the Auth
+  server): reported as `weakAuth`, one severity step lower, medium confidence. `getUser()` /
+  `getClaims()` are strong.
+- **Middleware:** an unparseable `matcher` entry, or auth logic in an unresolvable import, yields
+  _unknown_ coverage → `unverifiedAuth` at low confidence, never assumed protection.
+- **Webhooks** are excluded from `unauthenticated-data-access` and checked by the new
+  `endpoints/webhook-without-signature` rule: provider SDK verification, HMAC with
+  `timingSafeEqual`, or a shared-secret header comparison count; otherwise high (writes) or
+  medium, medium confidence (verification at a gateway is invisible).
+- **More sensitive operations:** file-system writes (`fs.writeFile`, `unlink`, …) and outbound
+  calls made with server secrets (SDK clients constructed with a secret env var or literal key,
+  `fetch`/`axios` sending one) → `secretSpend` (medium/medium). Pure static responses remain
+  non-sensitive. Read vs. write is decided by the API (and SQL text), not the HTTP method, so a
+  GET that writes is still reported as a write.
+- **Fastify encapsulation:** hooks and routes are keyed by the binding scope of the instance; an
+  inline plugin passed to `register()` does not leak its hooks to sibling routes.
+- **Rate limiting** confidence is capped at medium (low unless custom credential verification is
+  visible), and the message states that gateway/WAF/CDN limits are invisible.
+- **CORS:** a wildcard/reflected origin _without_ credentials on cookie-authenticated code is
+  reported at low/low (`permissiveOnCookieRoute`).
+
+The parser stays the TypeScript compiler API (ADR-0001), not ts-morph: ts-morph wraps the same
+parser, and the type-checking `Project` it is built around is what ADR-0001 rejected for speed.

@@ -96,28 +96,45 @@ filename order so that the final state wins:
 ## Endpoints family: what is detected
 
 - Route handlers, API routes, Vercel functions, server actions, and Express/Fastify routes that
-  read or modify data with no authentication signal (`endpoints/unauthenticated-data-access`).
-  Severity depends on whether the access is privileged (service role / admin SDK), direct
-  (ORM/SQL) or user-scoped (RLS applies) ([ADR-0012](adr/0012-endpoint-auth-detection.md)).
-- CORS that allows credentials together with a reflected or wildcard origin, via `cors()`,
-  `@fastify/cors`, manual headers, or `next.config` `headers()`
-  (`endpoints/cors-wildcard-credentials`).
+  read or modify data, write files, or call external services with server secrets, and have no
+  verified authentication (`endpoints/unauthenticated-data-access`). Auth is three-valued:
+  confirmed (no finding), weak (`getSession()` only: lower severity), or unverified (helper we
+  cannot inspect: low confidence). Helpers named like auth are trusted only after their body is
+  inspected ([ADR-0012](adr/0012-endpoint-auth-detection.md)).
+- Next.js `middleware.ts` / `proxy.ts` counts only if it verifiably authenticates and blocks, and
+  its matcher covers the route. Express `app.use` ordering and Fastify plugin encapsulation are
+  respected.
+- Webhook receivers that do not verify the sender's signature
+  (`endpoints/webhook-without-signature`).
+- CORS that allows credentials with a reflected or wildcard origin, and permissive origins on
+  cookie-authenticated code (`endpoints/cors-wildcard-credentials`).
 - Custom login/signup/reset/OTP endpoints and server actions without a rate limiter
-  (`endpoints/auth-route-no-rate-limit`).
+  (`endpoints/auth-route-no-rate-limit`, medium/low confidence only).
 
-## Endpoints family: known limitations
+## Endpoints family: blind spots (by design or by limitation)
 
-- **An auth call counts if it is present, even if nothing depends on it.** A call whose result
-  is ignored still counts as authentication.
-- **Authorization is not checked.** IDOR, missing role checks and multi-tenant leaks are out of
-  scope for v1.
-- **Calls are followed one level only.** Same-file helpers and local imported functions are
-  followed once. Deeper chains and middleware mounted from another file are not.
-- Sinks are recognised by API shape (Supabase, Firestore, Prisma, Drizzle, Mongoose-style
-  models, `pg`, `sql` tags). Custom data layers (`repo.save()`) are not recognised.
-- Express routers mounted with auth in another file can be reported as unauthenticated (false
-  positive). Add `router.use(auth)` in the router file, or suppress with a reason.
-- Rate limiting is recognised by library or name. An in-house limiter needs
-  `endpoints.rateLimitFunctions`. Limits enforced by the platform (WAF, API gateway) are not
-  visible.
-- `next.config` CORS headers are matched per file, not per `source` path.
+- **Auth enforced at the gateway or infrastructure level** (API gateway, Cloudflare Access, Vercel
+  deployment protection, a reverse proxy with OIDC, service mesh): invisible. Endpoints protected
+  only that way are reported. Suppress with the reason, or list the guard in config.
+- **Rate limits and webhook signature checks done by infrastructure** (WAF, CDN, gateway):
+  invisible. This is why both rules never report high confidence.
+- **Custom auth helpers we cannot recognise:** a guard in a package, behind two levels of
+  indirection, or with an unusual shape (no credential read visible) is reported as
+  _unverified_ (low confidence) or _wrapper does not check_ (medium). Add it to
+  `endpoints.authFunctions` once you have confirmed it.
+- **Dynamic route registration:** routes built in loops, from config objects, file-system
+  routers other than Next.js, or registered through framework wrappers we do not model (Hono,
+  NestJS decorators, tRPC procedures, GraphQL resolvers) are not discovered. No discovery means
+  no finding, which is a false negative.
+- **IDOR and authorization logic are explicitly out of scope.** "Is the caller logged in" is
+  checked. "May this caller act on this record" (ownership, roles, tenants) is not.
+- **Presence, not dominance:** a verified auth call anywhere in the handler counts, even if
+  the write happens before it or its result is ignored.
+- Calls are followed one level. Data access deeper than one helper is not seen, and the endpoint
+  then looks harmless (false negative).
+- Sinks are recognised by API shape: Supabase, Firestore, Prisma, Drizzle, Mongoose-style models,
+  `pg`/`mysql` `.query()`, prepared statements (D1/SQLite), `sql` tags, `fs` writes, SDK clients
+  built with secrets. Custom repositories (`repo.save()`) are invisible.
+- Routers mounted from another file with auth at the mount point (`app.use('/x', auth, router)`)
+  do not propagate. Those routes can be reported as unauthenticated. Add `router.use(auth)` in the
+  router file (recommended anyway) or suppress.
