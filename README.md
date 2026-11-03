@@ -151,7 +151,8 @@ endpoints:
   rateLimitFunctions: [limiter]
 ```
 
-Every option is in [docs/configuration.md](docs/configuration.md).
+Every option is in [docs/configuration.md](docs/configuration.md). Every rule id is listed,
+with what it detects and its known false positives, in [docs/rules](docs/rules/README.md).
 
 ## Suppressing a finding
 
@@ -278,11 +279,15 @@ node dist/cli/index.js scan /path/to/your/project
 
 ## Documentation
 
+- [Rules](docs/rules/README.md): one page per rule (what it detects, false positives, how
+  to fix and suppress)
 - [Threat model and known limitations](docs/threat-model.md)
 - [Configuration](docs/configuration.md) · [Exit codes](docs/exit-codes.md)
 - [Fixture accuracy](docs/accuracy.md)
 - [Architecture decision records](docs/adr/README.md)
-- [Contributing](CONTRIBUTING.md)
+- [Dependencies and licenses](docs/dependencies.md)
+- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) ·
+  [Code of conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md)
 
 ## License
 

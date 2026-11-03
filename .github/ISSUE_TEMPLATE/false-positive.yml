@@ -1,0 +1,42 @@
+name: False positive
+description: VibeGuard reported something that is not a problem. False positives are bugs.
+labels: [false-positive]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! **Never paste real secrets, credentials or private code.** Replace values with
+        fakes and reduce the example to the smallest snippet that still triggers the finding.
+  - type: input
+    id: rule
+    attributes:
+      label: Rule id
+      placeholder: endpoints/unauthenticated-data-access
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: VibeGuard version
+      placeholder: output of `vibeguard --version`
+    validations:
+      required: true
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Minimal snippet (with fake values)
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this is safe
+      description: For example "auth is done by middleware X", "this table is public by design".
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: The finding as reported (redacted output is fine)
+      render: text
