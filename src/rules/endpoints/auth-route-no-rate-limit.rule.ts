@@ -4,11 +4,11 @@ import type { FindingInput } from '../../core/findings/finding.ts';
 import { nodePosition } from '../../core/parsing/ts-parser.ts';
 import { scrubText } from '../../core/redaction/redact.ts';
 import {
-  coveredByMiddleware,
   describe,
   ENDPOINT_REFERENCES,
   endpointContext,
   isAuthLike,
+  middlewareRateLimits,
 } from './common.ts';
 import { firstLine } from './unauthenticated-data-access.rule.ts';
 
@@ -57,8 +57,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     },
     messages: {
       noRateLimit: {
-        en: '{endpoint} handles credentials and has no rate limiting.',
-        ar: 'النقطة {endpoint} تتعامل مع بيانات الاعتماد دون أي تحديد للمعدّل.',
+        en: '{endpoint} handles credentials and has no rate limiting in code. Limits enforced by a gateway, WAF or CDN are invisible to VibeGuard; if you have one, suppress this with the reason.',
+        ar: 'النقطة {endpoint} تتعامل مع بيانات الاعتماد دون أي تحديد للمعدّل في الشيفرة. الحدود التي تفرضها بوابة أو WAF أو CDN غير مرئية لـ VibeGuard؛ وإن كانت لديك، فاكتم هذه النتيجة مع ذكر السبب.',
       },
     },
   },
@@ -74,14 +74,15 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         ...ep.inherited,
       ]);
       if (a.rateLimit.length > 0 || a.managedAuth) continue;
-      if (coveredByMiddleware(ec, ep, (m) => m.rateLimits)) continue;
+      if (middlewareRateLimits(ec, ep)) continue;
       const pos = nodePosition(ep.sf, ep.node);
       out.push({
         location: { file: ep.file, line: pos.line, column: pos.column },
         messageId: 'noRateLimit',
         params: { endpoint: describe(ep) },
         evidence: scrubText(firstLine(ep.node.getText(ep.sf)), { maxLength: 120 }),
-        confidence: 'medium',
+        // Never high: limits enforced by a gateway, WAF or CDN are invisible to static analysis.
+        confidence: a.verifiesCredentials ? 'medium' : 'low',
         fingerprintKey: `${ep.method} ${ep.path}`,
       });
     }

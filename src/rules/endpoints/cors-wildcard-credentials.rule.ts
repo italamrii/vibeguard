@@ -1,13 +1,14 @@
 import ts from 'typescript';
 import { calleeName, staticName, stringValue, walk } from '../../analysis/ast-utils.ts';
 import { CODE_KINDS } from '../../core/discovery/file-kind.ts';
-import { defineRule } from '../../core/engine/rule.ts';
+import { importBindings, resolveImport } from '../../analysis/imports.ts';
+import { defineRule, type RuleContext } from '../../core/engine/rule.ts';
 import type { FindingInput } from '../../core/findings/finding.ts';
 import type { Confidence, Severity } from '../../core/findings/severity.ts';
 import { nodePosition } from '../../core/parsing/ts-parser.ts';
 import { scrubText } from '../../core/redaction/redact.ts';
 
-type Msg = 'reflectedOrigin' | 'wildcardWithCredentials';
+type Msg = 'reflectedOrigin' | 'wildcardWithCredentials' | 'permissiveOnCookieRoute';
 
 const ACAO = /^access-control-allow-origin$/i;
 const ACAC = /^access-control-allow-credentials$/i;
@@ -37,6 +38,24 @@ function originKind(n: ts.Node | undefined): OriginKind {
 
 function isTrue(n: ts.Node | undefined): boolean {
   return n !== undefined && (n.kind === ts.SyntaxKind.TrueKeyword || stringValue(n) === 'true');
+}
+
+const COOKIE_USE = /cookies\(\)|\.cookies\b|['"`]cookie['"`]|document\.cookie/i;
+
+/** Does this file (or a local module it imports, one level) authenticate with cookies? */
+async function cookieBasedImpl(
+  ctx: RuleContext,
+  rel: string,
+  sf: ts.SourceFile,
+  text: string,
+): Promise<boolean> {
+  if (COOKIE_USE.test(text)) return true;
+  for (const b of importBindings(sf)) {
+    const target = resolveImport(ctx, rel, b.spec);
+    const t = target ? await ctx.readText(target) : undefined;
+    if (t && COOKIE_USE.test(t.text)) return true;
+  }
+  return false;
 }
 
 export const corsWildcardCredentialsRule = defineRule<Msg>({
@@ -74,6 +93,10 @@ app.use(cors({
       },
     },
     messages: {
+      permissiveOnCookieRoute: {
+        en: 'CORS allows any origin on code that relies on cookies for authentication. Without credentials: true browsers will not send the cookies, so this is not directly exploitable, but it is one config change away. Restrict the origin list.',
+        ar: 'إعدادات CORS تسمح بأي مصدر في شيفرة تعتمد على ملفات تعريف الارتباط للتحقق من الهوية. وبدون credentials: true لن يرسل المتصفح تلك الملفات، لذا لا يمكن استغلال ذلك مباشرة، لكن تغييرًا واحدًا في الإعدادات يكفي لجعله ثغرة. قيّد قائمة المصادر.',
+      },
       reflectedOrigin: {
         en: 'CORS echoes any request origin and allows credentials: any website can make authenticated requests as your users and read the responses.',
         ar: 'إعدادات CORS تعيد أي مصدر وارد في الطلب وتسمح ببيانات الاعتماد: يستطيع أي موقع إرسال طلبات موثّقة باسم مستخدميك وقراءة الاستجابات.',
@@ -87,6 +110,8 @@ app.use(cors({
 
   async detect(ctx) {
     const out: FindingInput<Msg>[] = [];
+    const cookieBased = (rel: string, sf: ts.SourceFile, text: string): Promise<boolean> =>
+      cookieBasedImpl(ctx, rel, sf, text);
     for (const file of ctx.files({ kinds: CODE_KINDS })) {
       const t = await ctx.readText(file);
       if (!t || !/cors|access-control-allow/i.test(t.text)) continue;
@@ -94,8 +119,23 @@ app.use(cors({
       if (!parsed) continue;
       const sf = parsed.sourceFile;
       const allowlisted = ALLOWLIST.test(t.text);
-      const report = (node: ts.Node, kind: OriginKind): void => {
+      const usesCookies = await cookieBased(file.relPath, sf, t.text);
+      const report = (node: ts.Node, kind: OriginKind, credentials = true): void => {
         if (kind === 'fixed' || (kind === 'reflect' && allowlisted)) return;
+        if (!credentials) {
+          if (!usesCookies) return;
+          const pos = nodePosition(sf, node);
+          out.push({
+            location: { file: file.relPath, line: pos.line, column: pos.column },
+            messageId: 'permissiveOnCookieRoute',
+            params: {},
+            evidence: scrubText(node.getText(sf).replace(/\s+/g, ' '), { maxLength: 120 }),
+            severity: 'low',
+            confidence: 'low',
+            fingerprintKey: `permissive:${pos.line}`,
+          });
+          return;
+        }
         const pos = nodePosition(sf, node);
         const [messageId, severity, confidence]: [Msg, Severity, Confidence] =
           kind === 'reflect'
@@ -127,8 +167,13 @@ app.use(cors({
             ts.isPropertyAssignment(p) ? [[staticName(p.name) ?? '', p.initializer] as const] : [],
           ),
         );
-        if (!isTrue(props.get('credentials'))) return undefined;
-        report(n, originKind(props.get('origin')));
+        const origin = props.get('origin');
+        if (!isTrue(props.get('credentials'))) {
+          // cors() without options or with origin '*' / true, on cookie-authenticated code.
+          if (origin) report(n, originKind(origin), false);
+          return undefined;
+        }
+        report(n, originKind(origin));
         return undefined;
       });
 
@@ -163,7 +208,7 @@ app.use(cors({
         }
         return undefined;
       });
-      if (seen.credentials) for (const o of origins) report(o.node, o.kind);
+      for (const o of origins) report(o.node, o.kind, seen.credentials);
     }
     return out;
   },
