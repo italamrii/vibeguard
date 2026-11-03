@@ -159,7 +159,7 @@ async function realWorldSection(file: string): Promise<string> {
   const fps = data.projects.flatMap((p) => p.falsePositivesFixed);
   const fns = data.projects.flatMap((p) => p.falseNegativesFixed);
   const open = data.projects.flatMap((p) => p.openFindings);
-  let out = `
+  const out = `
 ## Real-world validation
 
 Scans of real projects, with the owner's permission, read-only. **Counts only**: no project names,
