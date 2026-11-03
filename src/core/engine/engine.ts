@@ -166,6 +166,8 @@ async function applySuppressions(
   const parsedByFile = new Map<string, ParsedSuppressions>();
   await Promise.all(
     ctx.files().map(async (f: FileRecord) => {
+      // Markdown documents *describe* directives (READMEs, ADRs); they are not code.
+      if (/\.mdx?$/i.test(f.relPath)) return;
       const t = await ctx.readText(f);
       if (!t || !t.text.includes(SUPPRESSION_TOKEN)) return;
       const lines = t.text.split(/\r?\n/);
