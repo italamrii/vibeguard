@@ -260,7 +260,7 @@ people who wrote the rules. They show the rules behave as designed and catch reg
 They do not estimate precision or recall on your code. Validation on real projects is
 reported separately, as counts only, in the same document.
 
-Performance: a synthetic 5,000-file project scans in about 3 seconds on the development
+Performance: a synthetic 5,000-file project scans in 3 to 4 seconds on the development
 machine (`npm run bench`).
 
 ## Run from source
