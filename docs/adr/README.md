@@ -20,3 +20,4 @@ explicit amendment section, rather than by silently editing it.
 | 0012 | [Detecting unauthenticated endpoints syntactically](0012-endpoint-auth-detection.md)                    | Accepted |
 | 0013 | [Rendering Arabic: isolated LTR runs in files, no Arabic in terminals](0013-arabic-rtl-rendering.md)    | Accepted |
 | 0014 | [SARIF 2.1.0 mapping for GitHub code scanning](0014-sarif-mapping.md)                                   | Accepted |
+| 0015 | [Packaging and release](0015-packaging-and-release.md)                                                  | Accepted |
