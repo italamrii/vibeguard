@@ -37,3 +37,7 @@ jobs:
         run: |
           node dist/cli/index.js --version
           node dist/cli/index.js scan --help | grep -q "Scan only code you own"
+      - name: Fixture accuracy (fails on any false positive or unexpected miss)
+        run: npm run accuracy -- --check
+      - name: Self-scan (no secret-shaped literal may enter this repository)
+        run: node dist/cli/index.js scan . --config .vibeguard.yml --fail-on low
