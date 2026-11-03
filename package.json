@@ -40,7 +40,8 @@
     "fixtures:build": "tsx scripts/build-fixtures.ts",
     "accuracy": "tsx scripts/accuracy.ts",
     "arabic-review": "tsx scripts/arabic-review.ts",
-    "sarif:check": "tsx scripts/validate-sarif.ts"
+    "sarif:check": "tsx scripts/validate-sarif.ts",
+    "scan:history": "tsx scripts/scan-history.ts"
   },
   "dependencies": {
     "commander": "14.0.3",
