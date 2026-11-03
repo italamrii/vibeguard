@@ -15,6 +15,7 @@ import {
   nameWords,
 } from '../../../../src/rules/secrets/high-entropy.rule.ts';
 import { privateKeyRule } from '../../../../src/rules/secrets/private-key.rule.ts';
+import { providerKeyTestRule } from '../../../../src/rules/secrets/provider-key-test.rule.ts';
 import { providerKeyRule } from '../../../../src/rules/secrets/provider-key.rule.ts';
 import { fake } from '../../../helpers/fake-secrets.ts';
 import { gitInit, makeProject } from '../../../helpers/project.ts';
@@ -343,5 +344,24 @@ describe('parseEnvLines', () => {
       { name: 'C', value: 'plain', line: 3, column: 1, valueColumn: 3 },
       { name: 'E', value: 'spaced', line: 5, column: 3, valueColumn: 7 },
     ]);
+  });
+});
+
+describe('secrets/provider-key-test (split from provider-key)', () => {
+  it('reports test-mode keys at low severity, and provider-key no longer does', async () => {
+    const files = { 'src/pay.ts': `const t = new Stripe('${fake('stripe_test', 'split')}');` };
+    const test = await run(providerKeyTestRule, files);
+    expect(test.map((f) => [f.ruleId, f.messageId, f.severity, f.confidence])).toEqual([
+      ['secrets/provider-key-test', 'testKey', 'low', 'high'],
+    ]);
+    expect(await run(providerKeyRule, files)).toEqual([]);
+  });
+
+  it.each([
+    ['live keys (owned by provider-key)', fake('stripe_live', 'split2')],
+    ["Stripe's documented test key", fake('doc_stripe_test')],
+    ['placeholders', ['sk', 'test', 'xxxxxxxxxxxxxxxxxxxxxxxx'].join('_')],
+  ])('does not report %s', async (_l, value) => {
+    expect(await run(providerKeyTestRule, { 'a.ts': `const k = '${value}';` })).toEqual([]);
   });
 });

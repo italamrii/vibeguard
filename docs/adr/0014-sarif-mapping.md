@@ -40,3 +40,11 @@ Security.
   as `result.level` and in properties, but GitHub's severity column shows the rule default.
 - Isolate characters in Arabic message text are invisible in GitHub's UI. Programs should read
   `ruleId` and `properties`, not parse messages.
+
+## Amendment (2026-11-03): rule split for accurate GitHub severity
+
+Stripe test-mode keys were the main case of a per-result severity (low) differing from its
+rule's default (critical). They are now a separate rule, `secrets/provider-key-test`
+(security-severity 2.5), so GitHub's per-rule severity is accurate for them. Remaining
+per-result overrides (for example a Gemini key escalated to critical inside the medium Google
+API key pattern) stay visible in `result.level` and `result.properties.security-severity`.

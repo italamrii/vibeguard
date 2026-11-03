@@ -9,7 +9,7 @@ import {
   SECRETS_REFERENCES,
 } from './common.ts';
 
-type Msg = 'hardcoded' | 'testKey' | 'keyId' | 'dbUrl';
+type Msg = 'hardcoded' | 'keyId' | 'dbUrl';
 
 export const providerKeyRule = defineRule<Msg>({
   meta: {
@@ -56,10 +56,6 @@ export const stripe = new Stripe(key);
         en: '{provider} is hardcoded in this file.',
         ar: 'المفتاح ({provider}) مكتوب مباشرة في هذا الملف.',
       },
-      testKey: {
-        en: '{provider} is hardcoded. Test-mode keys cannot move real money but still grant API access to your account’s test data and settings.',
-        ar: 'المفتاح ({provider}) مكتوب مباشرة. مفاتيح وضع الاختبار لا تحرّك أموالًا حقيقية لكنها تمنح وصولًا إلى بيانات الاختبار وإعدادات حسابك.',
-      },
       keyId: {
         en: '{provider} is hardcoded. On its own it is an identifier, but its secret key is usually nearby; check this file and its history.',
         ar: 'المعرّف ({provider}) مكتوب مباشرة. هو وحده معرّف فقط، لكن المفتاح السري المرتبط به يكون عادةً قريبًا؛ افحص هذا الملف وسجله.',
@@ -76,15 +72,10 @@ export const stripe = new Stripe(key);
     for (const file of ctx.files()) {
       if (!hardcodedScanApplies(file)) continue;
       for (const m of await secretsInFile(ctx, file)) {
-        if (m.kind === 'publicByContext') continue;
+        // Test-mode keys are reported by secrets/provider-key-test (its own, low, severity).
+        if (m.kind === 'publicByContext' || m.kind === 'testKey') continue;
         const messageId: Msg =
-          m.kind === 'testKey'
-            ? 'testKey'
-            : m.kind === 'keyId'
-              ? 'keyId'
-              : m.kind === 'dbUrl'
-                ? 'dbUrl'
-                : 'hardcoded';
+          m.kind === 'keyId' ? 'keyId' : m.kind === 'dbUrl' ? 'dbUrl' : 'hardcoded';
         out.push({
           location: {
             file: file.relPath,

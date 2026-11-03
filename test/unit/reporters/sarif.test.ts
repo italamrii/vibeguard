@@ -102,6 +102,7 @@ describe('sarif reporter', () => {
     }
     const sev = (id: string) => rules.find((r) => r.id === id)?.properties['security-severity'];
     expect(sev('secrets/provider-key')).toBe('9.5'); // critical
+    expect(sev('secrets/provider-key-test')).toBe('2.5'); // low: split so GitHub ranks it correctly
     expect(sev('secrets/high-entropy')).toBe('8.0'); // high
     expect(sev('endpoints/auth-route-no-rate-limit')).toBe('5.5'); // medium
     expect(sev('supabase/rls-no-policies')).toBe('2.5'); // low

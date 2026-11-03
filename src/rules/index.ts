@@ -7,6 +7,7 @@ import { clientExposedEnvRule } from './secrets/client-exposed-env.rule.ts';
 import { envFileCommittedRule } from './secrets/env-file-committed.rule.ts';
 import { highEntropyRule } from './secrets/high-entropy.rule.ts';
 import { privateKeyRule } from './secrets/private-key.rule.ts';
+import { providerKeyTestRule } from './secrets/provider-key-test.rule.ts';
 import { providerKeyRule } from './secrets/provider-key.rule.ts';
 import { permissivePolicyRule } from './supabase/permissive-policy.rule.ts';
 import { rlsDisabledRule } from './supabase/rls-disabled.rule.ts';
@@ -26,6 +27,7 @@ import { serviceRoleInClientRule } from './supabase/service-role-in-client.rule.
  */
 export const ALL_RULES: readonly Rule[] = [
   providerKeyRule,
+  providerKeyTestRule,
   privateKeyRule,
   highEntropyRule,
   envFileCommittedRule,

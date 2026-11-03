@@ -14,7 +14,8 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 
 | Rule                                    |     TP |    FP |    FN | of which known misses |  Precision |    Recall |
 | --------------------------------------- | -----: | ----: | ----: | --------------------: | ---------: | --------: |
-| `secrets/provider-key`                  |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
+| `secrets/provider-key`                  |     26 |     0 |     1 |                     1 |     100.0% |     96.3% |
+| `secrets/provider-key-test`             |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `secrets/private-key`                   |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `secrets/high-entropy`                  |      8 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `secrets/env-file-committed`            |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
