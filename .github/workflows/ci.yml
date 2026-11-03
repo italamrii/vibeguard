@@ -39,6 +39,8 @@ jobs:
           node dist/cli/index.js scan --help | grep -q "Scan only code you own"
       - name: Fixture accuracy (fails on any false positive or unexpected miss)
         run: npm run accuracy -- --check
+      - name: SARIF output validates (OASIS 2.1.0 schema + GitHub code scanning constraints)
+        run: npm run sarif:check
       - name: Self-scan (no secret-shaped literal may enter this repository)
         run: node dist/cli/index.js scan . --config .vibeguard.yml --fail-on low
 
