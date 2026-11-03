@@ -38,8 +38,11 @@ discovery:
   buildOutputDirs: [dist, out, .next, coverage]
 
 supabase:
+  # Default: every directory named supabase/migrations, at any depth (monorepos).
   migrationsDirs: [supabase/migrations]
-  exposedSchemas: [public] # default: read from supabase/config.toml, else [public]
+  # Default: [api] schemas from the supabase/config.toml next to the migrations,
+  # else Supabase's default [public, graphql_public].
+  exposedSchemas: [public]
 
 endpoints:
   authFunctions: [requireUser] # extra functions that count as an auth check

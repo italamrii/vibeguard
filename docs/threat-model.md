@@ -51,3 +51,44 @@ rule family.
   because that is where local secrets belong. They are still checked for client exposure.
 - Human-chosen passwords in test files are skipped. Random-looking tokens in tests are
   reported with lowered confidence.
+
+## Supabase family: what is detected
+
+From SQL migrations (`**/supabase/migrations/*.sql`, or `supabase.migrationsDirs`), replayed in
+filename order so that the final state wins:
+
+- Tables in exposed schemas (`[api] schemas` in `supabase/config.toml`, default
+  `public, graphql_public`) without Row Level Security, including RLS disabled later and
+  policies that exist while RLS is off (`supabase/rls-disabled`). Tables whose privileges are
+  revoked from `anon` and `authenticated` are treated as intentionally private.
+- RLS enabled with no permissive policy (`supabase/rls-no-policies`, low severity).
+- Policies that admit every row: `USING (true)` / `WITH CHECK (true)`, or conditions that
+  only check that the caller is logged in. Severity depends on command, audience and the
+  kind of table (`supabase/permissive-policy`).
+- Views in exposed schemas without `security_invoker` (`supabase/security-definer-view`) and
+  callable `SECURITY DEFINER` functions (`supabase/security-definer-function`), at medium/low
+  confidence.
+- The service-role key used in browser code: the env var referenced in a client module, or a
+  client module importing a module that uses the key (`supabase/service-role-in-client`).
+
+## Supabase family: known limitations
+
+- **The dashboard blind spot.** Tables, policies and RLS settings changed in the Supabase
+  dashboard and never exported to migrations are invisible. If the project uses Supabase but
+  has no migrations, the report says so explicitly (`no-migrations`) and is marked as partial
+  coverage. Run `supabase db pull` and commit the result.
+- **PL/pgSQL is not executed.** `DO` blocks and functions that change RLS or policies make the
+  affected tables _unknown_ (a `dynamic-sql` notice and partial coverage), but the effect itself
+  is not applied (fixture `vg-expect-miss`).
+- **Unparseable statements** (`parse-failed`) make the tables they mention unknown. Findings on
+  them have low confidence.
+- **Policy expressions are judged syntactically.** Only always-true and "is logged in" conditions
+  are reported. A scoped-looking but wrong condition (`owner = owner`, a join that leaks rows) is
+  not proven safe or unsafe.
+- `search_path` is assumed to be `public` for unqualified names. Column-level privileges and
+  `ALTER DEFAULT PRIVILEGES` are not modelled. Only `REVOKE ALL` (or `REVOKE EXECUTE` for
+  functions) counts as making an object private.
+- Client/server classification has no transitive import graph (ADR-0010). Shared modules are
+  "unknown" and are not reported on.
+- Storage bucket policies (`storage.objects`) are only checked if the policies appear in an
+  exposed schema. The `storage` schema is not exposed by default and is not analysed.

@@ -14,6 +14,3 @@ rather than by editing it.
 | 0008 | [File discovery, .gitignore and git-tracked files](0008-discovery.md) | Accepted |
 | 0009 | [Exit codes and fail-closed scanning](0009-exit-codes-fail-closed.md) | Accepted |
 | 0011 | [License: Apache-2.0](0011-license.md)                                | Accepted |
-
-ADR numbers 0002 (SQL parser) and 0010 (client/server classification) are reserved for the
-phases that make those decisions.
