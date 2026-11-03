@@ -8,6 +8,7 @@ import { discoverFiles } from '../../../../src/core/discovery/walker.ts';
 import { authRouteNoRateLimitRule } from '../../../../src/rules/endpoints/auth-route-no-rate-limit.rule.ts';
 import { corsWildcardCredentialsRule } from '../../../../src/rules/endpoints/cors-wildcard-credentials.rule.ts';
 import { matcherToRegExp } from '../../../../src/rules/endpoints/next-middleware.ts';
+import { webhookWithoutSignatureRule } from '../../../../src/rules/endpoints/webhook-without-signature.rule.ts';
 import {
   unauthenticatedDataAccessRule,
   verdictFor,
@@ -238,7 +239,6 @@ describe('endpoints/unauthenticated-data-access', () => {
       'same-file helper',
       'async function me() { return (await supabase.auth.getUser()).data.user; }\nexport async function POST() { await me(); await db.delete(t); }',
     ],
-    ['wrapper', 'export const POST = withAuth(async () => { await db.delete(t); });'],
     [
       'configured auth function',
       'export async function POST() { await mustBeMember(); await db.delete(t); }',
@@ -303,12 +303,19 @@ describe('endpoints/unauthenticated-data-access', () => {
         'const app = express();',
         "app.get('/open', async (req, res) => res.json(await User.find()));",
         "app.delete('/guarded', requireAuth, async (req, res) => { await User.deleteOne({}); });",
+        'function requireAuth(req, res, next) { if (!req.headers.authorization) return res.sendStatus(401); next(); }',
         "app.post('/passport', passport.authenticate('jwt'), async () => { await User.create({}); });",
         'app.use(isAuthenticated);',
         "app.delete('/later', async () => { await User.deleteMany({}); });",
       ].join('\n'),
     });
-    expect(summary(f)).toEqual(['read GET /open server.js:3']);
+    // requireAuth is defined in the file (checks a token); passport.authenticate is a known API;
+    // isAuthenticated is not resolvable, so the later route is unverified (low), never "safe".
+    expect(f.map((x) => [x.messageId, x.params['endpoint'], x.confidence])).toEqual([
+      // sorted by severity: the unverified mutation (high) before the open read (medium)
+      ['unverifiedAuth', 'DELETE /later', 'low'],
+      ['read', 'GET /open', 'low'],
+    ]);
   });
 
   it('skips credential endpoints (handled by the rate-limit rule)', async () => {
@@ -469,12 +476,12 @@ describe('prepared statements, SQL tags and project-specific auth helpers', () =
 
   it.each([
     [
-      'get…User helper',
-      'export async function POST() { if (!(await getMemberUser())) return; await db.delete(t); }',
+      'get…User helper (resolved, checks the cookie)',
+      "async function getMemberUser() { const sid = (await cookies()).get('sid'); if (!sid) return null; return lookup(sid); }\nexport async function POST() { if (!(await getMemberUser())) return; await db.delete(t); }",
     ],
     [
-      'assert…Auth helper',
-      'export async function POST() { await assertAuthenticated(); await db.delete(t); }',
+      'assert…Auth helper (resolved, calls getUser)',
+      "async function assertAuthenticated() { const { data } = await supabase.auth.getUser(); if (!data.user) throw new Error('401'); }\nexport async function POST() { await assertAuthenticated(); await db.delete(t); }",
     ],
     [
       'prepare() of a non-SQL string',
@@ -486,17 +493,19 @@ describe('prepared statements, SQL tags and project-specific auth helpers', () =
 });
 
 describe('regressions found on a real project (generic patterns)', () => {
-  it('treats authenticate*/authorize* helpers as auth', async () => {
+  it('treats authenticate*/authorize* helpers as auth once their body is seen to check', async () => {
     const src =
-      "export async function DELETE(r) { const a = await authenticateAdminRequest(r); if ('error' in a) return; await db.delete(t); }";
+      "async function authenticateAdminRequest(r) { const token = r.headers.get('authorization'); if (!token) return { error: 'unauthorized' }; return lookup(token); }\nexport async function DELETE(r) { const a = await authenticateAdminRequest(r); if ('error' in a) return; await db.delete(t); }";
     expect(
       await run(unauthenticatedDataAccessRule, { ...NEXT, 'src/app/api/x/route.ts': src }),
     ).toEqual([]);
     const src2 =
-      'export async function POST(r) { await authorizeOrgMember(r); await db.delete(t); }';
-    expect(
-      await run(unauthenticatedDataAccessRule, { ...NEXT, 'src/app/api/y/route.ts': src2 }),
-    ).toEqual([]);
+      "import { authorizeOrgMember } from '@acme/auth';\nexport async function POST(r) { await authorizeOrgMember(r); await db.delete(t); }";
+    const unresolved = await run(unauthenticatedDataAccessRule, {
+      ...NEXT,
+      'src/app/api/y/route.ts': src2,
+    });
+    expect(unresolved.map((f) => [f.messageId, f.confidence])).toEqual([['unverifiedAuth', 'low']]);
   });
 
   it('does not require auth before logout / sign-out', async () => {
@@ -514,5 +523,185 @@ describe('regressions found on a real project (generic patterns)', () => {
           "'use server';\nexport async function signOut() { await db.delete(sessions); }",
       }),
     ).toEqual([]);
+  });
+});
+
+describe('auth certainty (never silently pass, never overclaim)', () => {
+  const r = (files: Record<string, string>) =>
+    run(unauthenticatedDataAccessRule, { ...NEXT, ...files });
+
+  it('reports getSession()-only as weak auth, one severity lower', async () => {
+    const f = await r({
+      'src/app/api/x/route.ts':
+        'export async function DELETE() { const { data } = await supabase.auth.getSession(); if (!data.session) return; await db.delete(t); }',
+    });
+    expect(f.map((x) => [x.messageId, x.severity, x.confidence])).toEqual([
+      ['weakAuth', 'medium', 'medium'],
+    ]);
+  });
+
+  it('getUser() alongside getSession() is strong', async () => {
+    const f = await r({
+      'src/app/api/x/route.ts':
+        'export async function DELETE() { await supabase.auth.getSession(); await supabase.auth.getUser(); await db.delete(t); }',
+    });
+    expect(f).toEqual([]);
+  });
+
+  it('follows a wrapper one level and reports it when it does not check', async () => {
+    const noCheck = {
+      'src/lib/w.ts':
+        'export function withAuth(h) { return async (req) => { console.log(req.url); return h(req); }; }',
+    };
+    const checks = {
+      'src/lib/w.ts':
+        "export function withAuth(h) { return async (req) => { const s = await auth(); if (!s) return new Response('no', { status: 401 }); return h(req); }; }",
+    };
+    const route = {
+      'src/app/api/x/route.ts':
+        "import { withAuth } from '@/lib/w';\nexport const POST = withAuth(async () => { await db.delete(t); });",
+    };
+    expect((await r({ ...noCheck, ...route })).map((x) => [x.messageId, x.confidence])).toEqual([
+      ['wrapperDoesNotCheck', 'medium'],
+    ]);
+    expect(await r({ ...checks, ...route })).toEqual([]);
+  });
+
+  it('reports an unresolvable auth-named wrapper as unverified, low confidence', async () => {
+    const f = await r({
+      'src/app/api/x/route.ts':
+        "import { withAuth } from '@acme/auth';\nexport const POST = withAuth(async () => { await db.delete(t); });",
+    });
+    expect(f.map((x) => [x.messageId, x.confidence])).toEqual([['unverifiedAuth', 'low']]);
+  });
+
+  it('treats auth imported from known auth packages as strong whatever the local name', async () => {
+    const f = await r({
+      'src/app/api/x/route.ts':
+        "import { verify as checkJwt } from 'jsonwebtoken';\nimport { requireMember } from 'next-auth/custom';\nexport async function POST() { await requireMember(); await db.delete(t); }",
+    });
+    expect(f).toEqual([]);
+  });
+
+  it('never assumes coverage from a matcher it cannot parse', async () => {
+    const mw =
+      "export async function middleware(r) { const s = await auth(); if (!s) return NextResponse.redirect(new URL('/login', r.url)); }\nexport const config = { matcher: ['/api/(unclosed'] };";
+    const f = await r({
+      'src/middleware.ts': mw,
+      'src/app/api/x/route.ts': 'export async function POST() { await db.delete(t); }',
+    });
+    expect(f.map((x) => [x.messageId, x.confidence])).toEqual([['unverifiedAuth', 'low']]);
+  });
+
+  it('respects Express ordering: auth registered after a route does not protect it', async () => {
+    const f = await run(unauthenticatedDataAccessRule, {
+      'server.js': [
+        "const app = require('express')();",
+        'function requireAuth(req, res, next) { if (!req.headers.authorization) return res.sendStatus(401); next(); }',
+        "app.post('/before', async () => { await User.create({}); });",
+        'app.use(requireAuth);',
+        "app.post('/after', async () => { await User.create({}); });",
+      ].join('\n'),
+    });
+    expect(f.map((x) => x.params['endpoint'])).toEqual(['POST /before']);
+  });
+
+  it('scopes Fastify hooks to their plugin (encapsulation)', async () => {
+    const f = await run(unauthenticatedDataAccessRule, {
+      'f.js': [
+        "const fastify = require('fastify')();",
+        "fastify.decorate('authenticate', async (request) => request.jwtVerify());",
+        'fastify.register(async function plugin(fastify) {',
+        "  fastify.addHook('onRequest', fastify.authenticate);",
+        "  fastify.delete('/inside', async () => db.delete(t));",
+        '});',
+        "fastify.delete('/outside', async () => db.delete(t));",
+      ].join('\n'),
+    });
+    expect(f.map((x) => x.params['endpoint'])).toEqual(['DELETE /outside']);
+  });
+
+  it('reports file writes and outbound calls with server secrets as sensitive', async () => {
+    const f = await run(unauthenticatedDataAccessRule, {
+      'server.js': [
+        "const fs = require('fs');",
+        "const app = require('express')();",
+        'const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });',
+        "app.post('/upload', async (req) => { await fs.promises.writeFile('x', req.body); });",
+        "app.post('/ask', async (req) => openai.chat.completions.create({}));",
+        "app.post('/hook', async (req) => fetch('https://api.x', { headers: { Authorization: `Bearer ${process.env.X_API_KEY}` } }));",
+        "app.get('/static', (req, res) => res.json({ ok: true }));",
+      ].join('\n'),
+    });
+    expect(f.map((x) => [x.params['endpoint'], x.messageId])).toEqual([
+      ['POST /upload', 'mutation'],
+      ['POST /ask', 'secretSpend'],
+      ['POST /hook', 'secretSpend'],
+    ]);
+  });
+});
+
+describe('endpoints/webhook-without-signature', () => {
+  const r = (src: string) =>
+    run(webhookWithoutSignatureRule, { ...NEXT, 'src/app/api/webhooks/x/route.ts': src });
+
+  it('reports unsigned webhooks, higher when they write', async () => {
+    expect(
+      (
+        await r(
+          'export async function POST(q) { const e = await q.json(); await db.update(orders).set({ paid: true }); }',
+        )
+      ).map((f) => [f.messageId, f.severity, f.confidence]),
+    ).toEqual([['unsignedWrites', 'high', 'medium']]);
+    expect(
+      (await r('export async function POST(q) { console.log(await q.json()); }')).map(
+        (f) => f.messageId,
+      ),
+    ).toEqual(['unsigned']);
+  });
+
+  it.each([
+    [
+      'Stripe',
+      'export async function POST(q) { stripe.webhooks.constructEvent(b, s, k); await db.delete(t); }',
+    ],
+    [
+      'svix',
+      'export async function POST(q) { new Webhook(k); wh.verify(b, h); await db.delete(t); }',
+    ],
+    [
+      'HMAC + timingSafeEqual',
+      'export async function POST(q) { const d = createHmac("sha256", k).update(b).digest(); if (!timingSafeEqual(d, sig)) return; await db.delete(t); }',
+    ],
+    [
+      'shared secret header',
+      "export async function POST(q) { if (q.headers.get('x-webhook-secret') !== process.env.WEBHOOK_SECRET) return; await db.delete(t); }",
+    ],
+  ])('does not report a webhook verified with %s', async (_l, src) => {
+    expect(await r(src)).toEqual([]);
+  });
+
+  it('is not double-reported by unauthenticated-data-access', async () => {
+    const f = await run(unauthenticatedDataAccessRule, {
+      ...NEXT,
+      'src/app/api/webhooks/x/route.ts': 'export async function POST() { await db.delete(t); }',
+    });
+    expect(f).toEqual([]);
+  });
+});
+
+describe('cors: permissive origin on cookie-authenticated code', () => {
+  it('reports low/low only when the code uses cookies', async () => {
+    const cookie = await run(corsWildcardCredentialsRule, {
+      'a.ts': "const s = cookies().get('sid');\nres.setHeader('Access-Control-Allow-Origin', '*');",
+    });
+    expect(cookie.map((f) => [f.messageId, f.severity, f.confidence])).toEqual([
+      ['permissiveOnCookieRoute', 'low', 'low'],
+    ]);
+    const bearer = await run(corsWildcardCredentialsRule, {
+      'b.ts':
+        "const t = req.headers.get('Authorization');\nconst corsHeaders = { 'Access-Control-Allow-Origin': '*' };",
+    });
+    expect(bearer).toEqual([]);
   });
 });

@@ -25,19 +25,20 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 | `supabase/service-role-in-client`       |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `supabase/security-definer-view`        |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `supabase/security-definer-function`    |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `endpoints/unauthenticated-data-access` |     10 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `endpoints/cors-wildcard-credentials`   |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `endpoints/unauthenticated-data-access` |     18 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `endpoints/cors-wildcard-credentials`   |      4 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `endpoints/auth-route-no-rate-limit`    |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| **All rules**                           | **79** | **0** | **2** |                 **2** | **100.0%** | **97.5%** |
+| `endpoints/webhook-without-signature`   |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| **All rules**                           | **89** | **0** | **2** |                 **2** | **100.0%** | **97.8%** |
 
 ## Per app
 
 | App                   | Findings | Suppressed (with reason) |  TP |  FP |  FN | Scan complete |
 | --------------------- | -------: | -----------------------: | --: | --: | --: | ------------- |
 | `express-api-clean`   |        0 |                        0 |   0 |   0 |   0 | yes           |
-| `express-api-vuln`    |       26 |                        0 |  26 |   0 |   0 | yes           |
+| `express-api-vuln`    |       29 |                        0 |  29 |   0 |   0 | yes           |
 | `next-supabase-clean` |        0 |                        1 |   0 |   0 |   0 | yes           |
-| `next-supabase-vuln`  |       37 |                        0 |  37 |   0 |   2 | yes           |
+| `next-supabase-vuln`  |       44 |                        0 |  44 |   0 |   2 | yes           |
 | `vite-firebase-clean` |        0 |                        0 |   0 |   0 |   0 | yes           |
 | `vite-firebase-vuln`  |       16 |                        0 |  16 |   0 |   0 | yes           |
 
