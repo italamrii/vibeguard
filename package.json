@@ -1,0 +1,60 @@
+{
+  "name": "vibeguard",
+  "version": "0.1.0",
+  "description": "Local, read-only static scanner for security flaws common in AI-generated (vibe-coded) Next.js, React and Node apps on Supabase/Firebase.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "vibeguard": "dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/italamrii/vibeguard.git"
+  },
+  "keywords": [
+    "security",
+    "sast",
+    "supabase",
+    "nextjs",
+    "secrets",
+    "rls",
+    "cli"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "node scripts/bench.ts"
+  },
+  "dependencies": {
+    "commander": "14.0.3",
+    "ignore": "7.0.5",
+    "picocolors": "1.1.1",
+    "typescript": "6.0.3",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
+    "@eslint/js": "10.0.1",
+    "@types/node": "20.19.43",
+    "@vitest/coverage-v8": "4.1.11",
+    "ajv": "8.20.0",
+    "eslint": "10.14.0",
+    "prettier": "3.9.10",
+    "typescript-eslint": "8.72.1",
+    "vitest": "4.1.11"
+  }
+}

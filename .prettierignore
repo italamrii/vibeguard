@@ -1,0 +1,6 @@
+dist
+coverage
+node_modules
+fixtures
+test/vendor
+package-lock.json
