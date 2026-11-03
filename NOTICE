@@ -1,0 +1,9 @@
+VibeGuard
+Copyright 2026 italamrii and VibeGuard contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by third parties and distributed under their own
+licenses; see docs/dependencies.md in the source repository for the full list. No
+third-party source code is bundled into the published package: dependencies are installed
+from the npm registry under their own licenses.
