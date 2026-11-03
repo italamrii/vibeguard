@@ -33,7 +33,7 @@ export function isolateAuto(s: string, locale: Locale): string {
 const STRONG_LTR = /[A-Za-z0-9\u00C0-\u024F]/;
 /** Characters that may belong to an LTR token: Latin, digits, ASCII punctuation, single spaces. */
 const RUN =
-  /[A-Za-z0-9\u00C0-\u024F._\-\/@#$%&*+=~`'"()[\]{}<>:!?\\|^,;]+(?: [A-Za-z0-9\u00C0-\u024F._\-\/@#$%&*+=~`'"()[\]{}<>:!?\\|^,;]+)*/g;
+  /[A-Za-z0-9\u00C0-\u024F._\-/@#$%&*+=~`'"()[\]{}<>:!?\\|^,;]+(?: [A-Za-z0-9\u00C0-\u024F._\-/@#$%&*+=~`'"()[\]{}<>:!?\\|^,;]+)*/g;
 const TRAILING_SENTENCE_PUNCT = /[.,;:!?]+$/;
 const PAIRS: Readonly<Record<string, string>> = { ')': '(', ']': '[', '}': '{', '>': '<' };
 const OPENERS = new Set(['(', '[', '{', '<']);
