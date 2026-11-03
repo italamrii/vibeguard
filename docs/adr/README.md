@@ -15,5 +15,5 @@ rather than by editing it.
 | 0009 | [Exit codes and fail-closed scanning](0009-exit-codes-fail-closed.md) | Accepted |
 | 0011 | [License: Apache-2.0](0011-license.md)                                | Accepted |
 
-ADR numbers 0002 (SQL parser), 0007 (fixture templates) and 0010 (client/server classification)
-are reserved for the phases that make those decisions.
+ADR numbers 0002 (SQL parser) and 0010 (client/server classification) are reserved for the
+phases that make those decisions.
