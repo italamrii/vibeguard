@@ -1,0 +1,6 @@
+PORT=4000
+MONGODB_URI=mongodb://localhost:27017/app
+JWT_SECRET=change-me-to-a-long-random-string
+SLACK_BOT_TOKEN=xoxb-your-token
+AWS_ACCESS_KEY_ID={{FAKE:doc_aws_key_id}}
+AWS_SECRET_ACCESS_KEY={{FAKE:doc_aws_secret}}

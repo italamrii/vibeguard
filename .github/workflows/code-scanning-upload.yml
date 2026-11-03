@@ -1,0 +1,32 @@
+# Pre-release check: upload VibeGuard SARIF to GitHub code scanning for real.
+# Manual only (workflow_dispatch). Code scanning requires a public repository or GitHub
+# Advanced Security. Results come from the intentionally vulnerable *fixture* apps, so the
+# alerts it creates are synthetic: dismiss them (or delete the analysis) after checking.
+name: Code scanning upload (manual)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Scan the vulnerable fixture app into SARIF
+        run: |
+          npm run fixtures:build -- --out "$RUNNER_TEMP/fixtures"
+          node dist/cli/index.js scan "$RUNNER_TEMP/fixtures/next-supabase-vuln" \
+            --format sarif --output "$RUNNER_TEMP/vibeguard.sarif" --fail-on none
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ runner.temp }}/vibeguard.sarif
+          category: vibeguard-fixture-check

@@ -1,0 +1,6 @@
+# VibeGuard scanning its own repository (CI dogfooding).
+# fixtures/ holds intentionally vulnerable demo-app *templates*; they are scanned after
+# being materialised (npm run accuracy), not here.
+version: 1
+ignore:
+  - 'fixtures/**'

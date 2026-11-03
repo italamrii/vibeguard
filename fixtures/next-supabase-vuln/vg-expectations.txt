@@ -1,0 +1,2 @@
+# Files that cannot hold comments: <path> | <substring on the target line> | <rule-id>
+certs/server.key | BEGIN RSA PRIVATE KEY | secrets/private-key

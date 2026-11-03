@@ -1,0 +1,4 @@
+PORT=4000
+MONGODB_URI=mongodb+srv://admin:{{FAKE:db_password:mongo}}@cluster0.{{FAKE:supabase_ref:mongo}}.mongodb.net/app
+JWT_SECRET={{FAKE:b64_48:jwt}}
+SLACK_BOT_TOKEN={{FAKE:slack_bot:alerts}}

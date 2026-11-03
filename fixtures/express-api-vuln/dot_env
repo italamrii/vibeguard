@@ -1,0 +1,12 @@
+# vg-expect: secrets/env-file-committed
+PORT=4000
+# vg-expect: secrets/provider-key
+MONGODB_URI=mongodb+srv://admin:{{FAKE:db_password:mongo}}@cluster0.{{FAKE:supabase_ref:mongo}}.mongodb.net/app
+# vg-expect: secrets/high-entropy
+JWT_SECRET={{FAKE:b64_48:jwt}}
+# vg-expect: secrets/provider-key
+SLACK_BOT_TOKEN={{FAKE:slack_bot:alerts}}
+# vg-expect: secrets/provider-key
+AWS_ACCESS_KEY_ID={{FAKE:aws_key_id:s3}}
+# vg-expect: secrets/provider-key
+AWS_SECRET_ACCESS_KEY={{FAKE:aws_secret:s3}}

@@ -1,0 +1,6 @@
+# FAKE fixture project configuration (subset of supabase/config.toml).
+project_id = "acme-notes-fake"
+
+[api]
+enabled = true
+schemas = ["public", "graphql_public"]

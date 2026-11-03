@@ -1,0 +1,6 @@
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+STRIPE_SECRET_KEY=sk_live_your_key_here
+# The template itself shows the app expects an OpenAI key in the browser bundle:
+# vg-expect: secrets/client-exposed-env
+NEXT_PUBLIC_OPENAI_API_KEY=
