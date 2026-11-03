@@ -1,6 +1,6 @@
-import path from 'node:path';
 import ts from 'typescript';
 import { dottedName, walk } from '../../analysis/ast-utils.ts';
+import { resolveImport } from '../../analysis/imports.ts';
 import { classifyRuntime } from '../../analysis/runtime.ts';
 import { CODE_KINDS } from '../../core/discovery/file-kind.ts';
 import type { FileRecord } from '../../core/discovery/walker.ts';
@@ -16,19 +16,6 @@ type Msg = 'envInClient' | 'adminModuleImported';
 /** Env var names that hold the service_role / secret key. */
 const SERVICE_KEY_NAME = /SERVICE[_-]?ROLE|^SUPABASE_SECRET|^SB_SECRET/i;
 const ENV_REF = /^(?:process\.env|import\.meta\.env)\.([A-Za-z_][A-Za-z0-9_]*)$/;
-const CODE_EXTENSIONS = [
-  '',
-  '.ts',
-  '.tsx',
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.cjs',
-  '/index.ts',
-  '/index.tsx',
-  '/index.js',
-  '/index.jsx',
-];
 
 /** A module that creates or holds a service-role client: references the key by name, or embeds it. */
 async function isAdminModule(
@@ -49,30 +36,6 @@ async function isAdminModule(
     memo.set(file.relPath, p);
   }
   return p;
-}
-
-/** Resolve `./x`, `../x`, `@/x`, `~/x` to a scanned file. Bare package specifiers are not followed. */
-export function resolveImport(
-  ctx: RuleContext,
-  fromRel: string,
-  spec: string,
-): FileRecord | undefined {
-  const bases: string[] = [];
-  if (spec.startsWith('./') || spec.startsWith('../')) {
-    bases.push(path.posix.normalize(path.posix.join(path.posix.dirname(fromRel), spec)));
-  } else if (spec.startsWith('@/') || spec.startsWith('~/')) {
-    const rest = spec.slice(2);
-    bases.push(`src/${rest}`, rest);
-  } else {
-    return undefined;
-  }
-  for (const base of bases) {
-    for (const ext of CODE_EXTENSIONS) {
-      const f = ctx.file(`${base}${ext}`);
-      if (f && CODE_KINDS.includes(f.kind)) return f;
-    }
-  }
-  return undefined;
 }
 
 const SERVER_DATA_FUNCTIONS = new Set(['getServerSideProps', 'getStaticProps', 'getStaticPaths']);
