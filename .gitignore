@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+# Materialized fixtures (built from templates; may contain fake secret-shaped strings)
+.fixtures-out/
