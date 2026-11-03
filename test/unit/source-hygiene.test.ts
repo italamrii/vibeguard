@@ -35,3 +35,14 @@ describe('source hygiene', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('docs', () => {
+  it('lists every ADR file in docs/adr/README.md', () => {
+    const dir = path.join(repoRoot, 'docs', 'adr');
+    const index = readFileSync(path.join(dir, 'README.md'), 'utf8');
+    const missing = readdirSync(dir).filter(
+      (f) => /^\d{4}-.*\.md$/.test(f) && !index.includes(`(${f})`),
+    );
+    expect(missing).toEqual([]);
+  });
+});
