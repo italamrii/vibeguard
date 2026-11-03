@@ -1,8 +1,68 @@
 # Threat model and known limitations
 
 VibeGuard is a **static, local, read-only** scanner. This document says what it is designed
-to catch, what it cannot catch, and how it protects itself and its users. It grows with each
-rule family.
+to catch, what it cannot catch, and how it protects itself and its users.
+
+**A clean report means "none of the patterns VibeGuard knows were found in the files it
+could read". It does not mean the application is secure.** Every known blind spot is listed
+in one place in [All blind spots](#all-blind-spots). The per-family sections below give the
+details.
+
+## All blind spots
+
+The consolidated list. Each item is explained in its family section, and fixtures that
+document a miss are annotated `vg-expect-miss`.
+
+**Cross-cutting (all rules)**
+
+1. **Only the repository is visible.** Dashboard settings, deployed config, environment
+   variables on the host, gateways, WAFs, CDNs and platform protections are invisible.
+2. **No execution.** Code, SQL functions, `DO` blocks and build steps are never run, so
+   values and state computed at runtime are unknown.
+3. **No full import graph.** Calls are followed one level; shared modules are classified
+   "unknown" and not reported on (client/server, auth helpers, data access).
+4. **Git history is not scanned.** Only the current working tree is read.
+5. **Unsupported files and frameworks** produce no findings: binary files, files over
+   5 MiB (skipped with a diagnostic), frameworks other than Next.js, Vite, Create React App,
+   Expo, Vercel functions, Express and Fastify.
+6. **The scanned repo's `.vibeguard.yml` and inline suppressions are trusted.** A malicious
+   change can switch rules off or suppress findings (use `--config` from a trusted path in
+   CI; suppressions are visible in reports and SARIF).
+7. **Out of scope by design (v1):** authorization logic (IDOR, roles, tenants), XSS, SQL
+   injection, SSRF, dependency vulnerabilities, Firebase Security Rules files, and any
+   vulnerability class outside the three rule families.
+
+**Secrets**
+
+8. Obfuscated, concatenated, encoded or runtime-built secrets.
+9. Random tokens in variables with neutral names; unknown provider formats without a
+   secret-like name.
+10. Whether a key is live or revoked (VibeGuard never contacts providers).
+11. Server secrets passed into client code through props or shared modules.
+12. Gitignored, untracked `.env` files are deliberately not checked for hardcoded secrets.
+13. Human-chosen passwords in tests and throwaway CI/compose database passwords are skipped.
+
+**Supabase**
+
+14. Tables, policies and RLS changed in the dashboard and not exported to migrations.
+15. Effects of PL/pgSQL (`DO` blocks, functions) and of statements that fail to parse: the
+    tables become "unknown" (partial coverage), the effect is not applied.
+16. Policy conditions are judged syntactically: a wrong but scoped-looking condition is not
+    reported.
+17. `search_path` assumed `public`; column privileges and `ALTER DEFAULT PRIVILEGES` not
+    modelled; `storage` schema not analysed; views are not checked for which tables they
+    read; materialized views are not analysed; `SECURITY DEFINER` function bodies are not
+    analysed.
+
+**Endpoints**
+
+18. Auth, rate limits, CORS and webhook signature checks done by infrastructure.
+19. Custom auth helpers that cannot be inspected (reported as unverified, low confidence).
+20. Dynamically registered routes and unmodelled frameworks (Hono, NestJS, tRPC, GraphQL).
+21. Presence, not dominance: an auth call anywhere in the handler counts.
+22. Data access deeper than one helper, and custom repositories (`repo.save()`).
+23. Routers mounted with auth in another file (can cause false positives).
+24. Endpoint purpose (login, webhook) is inferred from paths and names.
 
 ## What VibeGuard protects against (its own risks)
 
@@ -18,12 +78,14 @@ rule family.
 
 ## Secrets family: what is detected
 
-- Provider credentials with distinctive formats (`secrets/provider-key`): Stripe live,
-  restricted and test keys; OpenAI; Anthropic; AWS access key IDs, plus AWS secret keys
+- Provider credentials with distinctive formats (`secrets/provider-key`): Stripe live
+  and restricted keys; OpenAI; Anthropic; AWS access key IDs, plus AWS secret keys
   when named as such; GitHub classic and fine-grained tokens; Slack tokens and webhooks;
   SendGrid; Twilio API keys; Resend; Google API keys (Gemini keys escalated, Firebase web
   keys excluded); Supabase `service_role` JWTs and `sb_secret_` keys; passwords inside
   database URLs.
+- Stripe test-mode keys (`secrets/provider-key-test`, low severity, a separate rule id so
+  GitHub code scanning ranks them as low).
 - Private keys (`secrets/private-key`): PEM blocks, including JSON-escaped and
   string-concatenated ones, and Google service-account files.
 - Generic credentials (`secrets/high-entropy`): high-entropy or password values bound to
@@ -39,7 +101,8 @@ rule family.
 - **Obfuscated or assembled secrets are missed**: concatenation, base64-wrapped values,
   values built at runtime. Detection is per literal (fixture `vg-expect-miss`).
 - **Git history is not scanned.** A secret deleted in a later commit is invisible. Use a
-  history scanner (gitleaks, trufflehog) once, and rotate anything found.
+  history scanner (gitleaks, trufflehog) once, and rotate anything found. (VibeGuard's own
+  repository is checked with `npm run scan:history` before releases.)
 - **No validity checking.** VibeGuard never contacts providers, by design, so it cannot tell
   a revoked key from a live one.
 - **Unknown formats** fall back to the entropy rule, which needs a secret-like variable or
