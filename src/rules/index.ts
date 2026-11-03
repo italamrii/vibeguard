@@ -4,6 +4,14 @@ import { envFileCommittedRule } from './secrets/env-file-committed.rule.ts';
 import { highEntropyRule } from './secrets/high-entropy.rule.ts';
 import { privateKeyRule } from './secrets/private-key.rule.ts';
 import { providerKeyRule } from './secrets/provider-key.rule.ts';
+import { permissivePolicyRule } from './supabase/permissive-policy.rule.ts';
+import { rlsDisabledRule } from './supabase/rls-disabled.rule.ts';
+import { rlsNoPoliciesRule } from './supabase/rls-no-policies.rule.ts';
+import {
+  securityDefinerFunctionRule,
+  securityDefinerViewRule,
+} from './supabase/security-definer.rule.ts';
+import { serviceRoleInClientRule } from './supabase/service-role-in-client.rule.ts';
 
 /**
  * The rule registry. This is the only list of rules; adding a rule means adding its
@@ -18,4 +26,10 @@ export const ALL_RULES: readonly Rule[] = [
   highEntropyRule,
   envFileCommittedRule,
   clientExposedEnvRule,
+  rlsDisabledRule,
+  rlsNoPoliciesRule,
+  permissivePolicyRule,
+  serviceRoleInClientRule,
+  securityDefinerViewRule,
+  securityDefinerFunctionRule,
 ] as readonly Rule[];
