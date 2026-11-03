@@ -5,20 +5,28 @@ import type { Confidence, Severity } from '../../core/findings/severity.ts';
 import { nodePosition } from '../../core/parsing/ts-parser.ts';
 import { scrubText } from '../../core/redaction/redact.ts';
 import {
-  coveredByMiddleware,
   describe,
   ENDPOINT_REFERENCES,
   endpointContext,
   isAuthLike,
   isPublicUtility,
   isSessionTermination,
+  isWebhook,
+  middlewareAuth,
 } from './common.ts';
-import type { Sink } from './signals.ts';
+import { bestAuth, type Sink } from './signals.ts';
 
-type Msg = 'privilegedMutation' | 'mutation' | 'rlsGuardedMutation' | 'privilegedRead' | 'read';
+type SinkMsg =
+  | 'privilegedMutation'
+  | 'mutation'
+  | 'rlsGuardedMutation'
+  | 'privilegedRead'
+  | 'read'
+  | 'secretSpend';
+type Msg = SinkMsg | 'weakAuth' | 'unverifiedAuth' | 'wrapperDoesNotCheck';
 
 interface Verdict {
-  readonly messageId: Msg;
+  readonly messageId: SinkMsg;
   readonly severity: Severity;
   readonly confidence: Confidence;
 }
@@ -37,6 +45,10 @@ export function verdictFor(sinks: readonly Sink[]): { verdict: Verdict; sink: Si
     [
       (s) => s.kind === 'read' && s.privilege === 'privileged',
       { messageId: 'privilegedRead', severity: 'high', confidence: 'medium' },
+    ],
+    [
+      (s) => s.kind === 'outbound',
+      { messageId: 'secretSpend', severity: 'medium', confidence: 'medium' },
     ],
     [
       (s) => s.kind === 'read' && s.privilege === 'direct',
@@ -112,6 +124,22 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
         en: '{endpoint} reads data ({api}) with no authentication check. Confirm the data is meant to be public.',
         ar: 'النقطة {endpoint} تقرأ البيانات ({api}) دون أي تحقق من الهوية. تأكّد من أن هذه البيانات مقصود أن تكون عامة.',
       },
+      secretSpend: {
+        en: '{endpoint} calls an external service with your server credentials ({api}) and has no authentication check: anyone can spend your quota or act with your account.',
+        ar: 'النقطة {endpoint} تستدعي خدمة خارجية ببيانات اعتماد خادمك ({api}) دون أي تحقق من الهوية: يستطيع أي شخص استهلاك حصتك أو التصرف بحسابك.',
+      },
+      weakAuth: {
+        en: '{endpoint} reaches data ({api}) after only supabase.auth.getSession(), which reads the session cookie without verifying it. Use getUser() (or getClaims()) on the server.',
+        ar: 'النقطة {endpoint} تصل إلى البيانات ({api}) بعد استدعاء supabase.auth.getSession() فقط، وهو يقرأ ملف تعريف الجلسة دون التحقق منه. استخدم getUser() (أو getClaims()) على الخادم.',
+      },
+      unverifiedAuth: {
+        en: '{endpoint} reaches data ({api}) and its only auth signal ({helper}) could not be verified: VibeGuard cannot see inside it. Unverified, so confirm it really authenticates.',
+        ar: 'النقطة {endpoint} تصل إلى البيانات ({api}) وإشارة التحقق الوحيدة فيها ({helper}) تعذّر التأكد منها لأن VibeGuard لا يرى ما بداخلها. غير مؤكد، فتأكّد من أنها تتحقق من الهوية فعلًا.',
+      },
+      wrapperDoesNotCheck: {
+        en: '{endpoint} relies on {helper}, but its implementation performs no authentication check, so it reaches data ({api}) unauthenticated.',
+        ar: 'النقطة {endpoint} تعتمد على {helper}، لكن تنفيذها لا يتضمن أي تحقق من الهوية، فتصل إلى البيانات ({api}) دون تحقق.',
+      },
       rlsGuardedMutation: {
         en: '{endpoint} modifies data ({api}) without checking the user; only Row Level Security protects it. Verify the policies, and prefer an explicit check.',
         ar: 'النقطة {endpoint} تعدّل البيانات ({api}) دون التحقق من المستخدم؛ لا يحميها سوى Row Level Security. تحقّق من السياسات، والأفضل إضافة تحقق صريح.',
@@ -123,30 +151,53 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     const out: FindingInput<Msg>[] = [];
     const ec = await endpointContext(ctx);
     for (const ep of await findEndpoints(ctx)) {
-      if (isAuthLike(ep) || isPublicUtility(ep) || isSessionTermination(ep)) continue;
+      // Public by design: credentials (rate-limit rule), utilities, logout, and webhooks
+      // (signature rule).
+      if (isAuthLike(ep) || isPublicUtility(ep) || isSessionTermination(ep) || isWebhook(ep))
+        continue;
       const a = await ec.signals.analyse(ep.file, ep.sf, [
         ...ep.handlers,
         ...ep.middleware,
         ...ep.inherited,
       ]);
-      if (a.auth.length > 0) continue;
-      if (coveredByMiddleware(ec, ep, (m) => m.enforcesAuth)) continue;
+      const best = bestAuth(a);
+      const mw = middlewareAuth(ec, ep);
+      if (best === 'strong' || mw === 'enforced') continue;
       const v = verdictFor(a.sinks);
       if (!v) continue;
+      const helper = a.auth.find((x) => x.strength === best)?.name ?? 'middleware.ts';
+      let messageId: Msg = v.verdict.messageId;
+      let severity: Severity = v.verdict.severity;
+      let confidence: Confidence = v.verdict.confidence;
+      if (best === 'weak') {
+        messageId = 'weakAuth';
+        severity = lowerSeverity(severity);
+        confidence = 'medium';
+      } else if (best === 'unverified' || mw === 'unknown') {
+        messageId = 'unverifiedAuth';
+        confidence = 'low';
+      } else if (best === 'notChecking') {
+        messageId = 'wrapperDoesNotCheck';
+        confidence = 'medium';
+      }
       const pos = nodePosition(ep.sf, ep.node);
       out.push({
         location: { file: ep.file, line: pos.line, column: pos.column },
-        messageId: v.verdict.messageId,
-        params: { endpoint: describe(ep), api: v.sink.api },
+        messageId,
+        params: { endpoint: describe(ep), api: v.sink.api, helper },
         evidence: scrubText(firstLine(ep.node.getText(ep.sf)), { maxLength: 120 }),
-        severity: v.verdict.severity,
-        confidence: v.verdict.confidence,
+        severity,
+        confidence,
         fingerprintKey: `${ep.method} ${ep.path}`,
       });
     }
     return out;
   },
 });
+
+function lowerSeverity(s: Severity): Severity {
+  return s === 'critical' ? 'high' : s === 'high' ? 'medium' : 'low';
+}
 
 export function firstLine(s: string): string {
   return s.split('\n')[0] ?? s;

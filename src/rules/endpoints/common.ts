@@ -1,6 +1,6 @@
 import type { Endpoint } from '../../analysis/routes.ts';
 import type { RuleContext } from '../../core/engine/rule.ts';
-import { findMiddleware, middlewareCovers, type MiddlewareInfo } from './next-middleware.ts';
+import { findMiddleware, middlewareCoverage, type MiddlewareInfo } from './next-middleware.ts';
 import { SignalAnalyzer } from './signals.ts';
 
 export const ENDPOINT_REFERENCES = [
@@ -63,12 +63,38 @@ export function endpointContext(ctx: RuleContext): Promise<EndpointContext> {
   return p;
 }
 
-/** Next.js middleware/proxy that covers this endpoint and satisfies `pred`. */
-export function coveredByMiddleware(
-  ec: EndpointContext,
-  ep: Endpoint,
-  pred: (m: MiddlewareInfo) => boolean,
-): boolean {
+/**
+ * What Next.js middleware/proxy tells us about this endpoint's auth:
+ *  - 'enforced': a middleware that verifiably checks auth and blocks covers the route;
+ *  - 'unknown':  a middleware may protect it, but we cannot confirm (unparseable matcher,
+ *                unresolvable auth helper);
+ *  - 'none':     nothing covers it.
+ */
+export function middlewareAuth(ec: EndpointContext, ep: Endpoint): 'enforced' | 'unknown' | 'none' {
+  if (ep.kind !== 'next-route' && ep.kind !== 'next-pages-api') return 'none';
+  let unknown = false;
+  for (const m of ec.middleware) {
+    const cov = middlewareCoverage(m, ep.file, ep.path);
+    if (cov === 'covers' && m.enforcesAuth) return 'enforced';
+    if (
+      (cov === 'covers' && m.authUnknown) ||
+      (cov === 'unknown' && (m.enforcesAuth || m.authUnknown))
+    )
+      unknown = true;
+  }
+  return unknown ? 'unknown' : 'none';
+}
+
+export function middlewareRateLimits(ec: EndpointContext, ep: Endpoint): boolean {
   if (ep.kind !== 'next-route' && ep.kind !== 'next-pages-api') return false;
-  return ec.middleware.some((m) => pred(m) && middlewareCovers(m, ep.file, ep.path));
+  return ec.middleware.some(
+    (m) => m.rateLimits && middlewareCoverage(m, ep.file, ep.path) === 'covers',
+  );
+}
+
+/** Webhook receivers: must authenticate the *sender*, by signature, not a user session. */
+export function isWebhook(ep: Endpoint): boolean {
+  return (
+    ep.kind !== 'server-action' && /(?:^|\/)(?:webhooks?|hooks)(?:\/|$)|webhook/i.test(ep.path)
+  );
 }
