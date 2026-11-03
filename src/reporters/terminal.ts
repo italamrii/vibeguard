@@ -50,7 +50,7 @@ export const terminalReporter: Reporter = {
 
     if (!result.complete) out.push(p.warn(`! ${ui.incomplete}`), '');
 
-    const findings = activeFindings(result);
+    const findings = groupByFile(activeFindings(result));
     let currentFile: string | undefined;
     for (const f of findings) {
       if (f.location.file !== currentFile) {
@@ -107,6 +107,26 @@ export const terminalReporter: Reporter = {
     }
   },
 };
+
+/**
+ * Keep each file's findings together (one header per file), ordering files by their most
+ * severe finding so the worst problems are still at the top. Input is already sorted by
+ * severity, then location (engine.compareFindings).
+ */
+function groupByFile(findings: readonly Finding[]): Finding[] {
+  const order: string[] = [];
+  const byFile = new Map<string, Finding[]>();
+  for (const f of findings) {
+    let list = byFile.get(f.location.file);
+    if (!list) {
+      list = [];
+      byFile.set(f.location.file, list);
+      order.push(f.location.file);
+    }
+    list.push(f);
+  }
+  return order.flatMap((file) => byFile.get(file) ?? []);
+}
 
 function renderSummary(result: ScanResult, opts: ReportOptions, p: Palette): string[] {
   const ui = UI[opts.locale];
