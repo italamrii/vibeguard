@@ -296,7 +296,8 @@ const token = jwt.sign({ sub: user.id }, JWT_SECRET, { expiresIn: '1h' });`,
           const name = m[1] ?? '';
           const value = m[2] ?? '';
           if (known.has(value)) continue;
-          const c = keep(classifyCandidate(name.split('.').pop() ?? name, value), file.relPath);
+          const bare = name.split('.').pop() ?? name;
+          const c = keep(classifyCandidate(bare, value), file.relPath, bare, value);
           if (!c) continue;
           const confidence: Confidence = textConfidence === 'low' ? 'low' : c.confidence;
           out.push({
@@ -320,9 +321,32 @@ const token = jwt.sign({ sub: user.id }, JWT_SECRET, { expiresIn: '1h' });`,
  * are test data, not leaks. Random-looking tokens in tests are still reported (real keys
  * do get pasted into integration tests), with confidence lowered by confidenceForPath.
  */
-function keep(c: Candidate | undefined, relPath: string): Candidate | undefined {
+function keep(
+  c: Candidate | undefined,
+  relPath: string,
+  name = '',
+  value = '',
+): Candidate | undefined {
   if (c?.kind === 'password' && isTestPath(relPath)) return undefined;
+  if (c?.kind === 'password' && isEphemeralServicePassword(relPath, name, value)) return undefined;
   return c;
+}
+
+const CI_OR_COMPOSE =
+  /^\.github\/workflows\/[^/]+\.ya?ml$|(?:^|\/)\.gitlab-ci\.ya?ml$|(?:^|\/)(?:docker-)?compose(?:\.[\w-]+)?\.ya?ml$/;
+const SERVICE_IMAGE_PASSWORD =
+  /^(?:POSTGRES|PG|MYSQL|MYSQL_ROOT|MARIADB|MARIADB_ROOT|MONGO_INITDB_ROOT|REDIS|RABBITMQ_DEFAULT|MSSQL_SA|SA|CLICKHOUSE)_PASSWORD$/i;
+
+/**
+ * Passwords for throwaway database containers in CI workflows and compose files
+ * (`services: postgres: env: POSTGRES_PASSWORD: ci-pass`) exist only for the job or the
+ * local stack. Human-chosen (low-entropy) values there are not leaks; a random-looking
+ * value may be a real credential and is still reported.
+ */
+export function isEphemeralServicePassword(relPath: string, name: string, value: string): boolean {
+  return (
+    CI_OR_COMPOSE.test(relPath) && SERVICE_IMAGE_PASSWORD.test(name) && shannonEntropy(value) < 3.5
+  );
 }
 
 function make(

@@ -11,6 +11,7 @@ import { envFileCommittedRule } from '../../../../src/rules/secrets/env-file-com
 import {
   classifyCandidate,
   highEntropyRule,
+  isEphemeralServicePassword,
   nameWords,
 } from '../../../../src/rules/secrets/high-entropy.rule.ts';
 import { privateKeyRule } from '../../../../src/rules/secrets/private-key.rule.ts';
@@ -208,6 +209,17 @@ describe('secrets/high-entropy', () => {
     const src = `jwt.sign({ id: 1 }, 'test-secret-1');\nconst password = 'Sup3rS3cret!';\nconst apiToken = '${fake('b64_48', 't')}';`;
     const findings = await run(highEntropyRule, { 'test/auth.test.ts': src });
     expect(findings.map((f) => [f.location.line, f.confidence])).toEqual([[3, 'low']]);
+  });
+
+  it.each([
+    ['.github/workflows/test.yml', 'POSTGRES_PASSWORD', 'ci-db-pass', true],
+    ['docker-compose.yml', 'MYSQL_ROOT_PASSWORD', 'rootpass1', true],
+    ['compose.dev.yaml', 'MONGO_INITDB_ROOT_PASSWORD', 'example1', true],
+    ['.github/workflows/deploy.yml', 'POSTGRES_PASSWORD', fake('db_password', 'ci'), false],
+    ['.github/workflows/test.yml', 'ADMIN_PASSWORD', 'ci-db-pass', false],
+    ['config/app.yml', 'POSTGRES_PASSWORD', 'ci-db-pass', false],
+  ])('ephemeral service password: %s %s → skipped=%s', (file, name, value, skipped) => {
+    expect(isEphemeralServicePassword(file, name, value)).toBe(skipped);
   });
 
   it('reads key/value config files, with low confidence for plain text', async () => {

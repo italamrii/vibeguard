@@ -16,7 +16,7 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 | ------------------------------------ | -----: | ----: | ----: | --------------------: | ---------: | --------: |
 | `secrets/provider-key`               |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
 | `secrets/private-key`                |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/high-entropy`               |      7 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/high-entropy`               |      8 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `secrets/env-file-committed`         |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `secrets/client-exposed-env`         |      9 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `supabase/rls-disabled`              |      4 |     0 |     1 |                     1 |     100.0% |     80.0% |
@@ -25,14 +25,14 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 | `supabase/service-role-in-client`    |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `supabase/security-definer-view`     |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
 | `supabase/security-definer-function` |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| **All rules**                        | **62** | **0** | **2** |                 **2** | **100.0%** | **96.9%** |
+| **All rules**                        | **63** | **0** | **2** |                 **2** | **100.0%** | **96.9%** |
 
 ## Per app
 
 | App                   | Findings | Suppressed (with reason) |  TP |  FP |  FN | Scan complete |
 | --------------------- | -------: | -----------------------: | --: | --: | --: | ------------- |
 | `express-api-clean`   |        0 |                        0 |   0 |   0 |   0 | yes           |
-| `express-api-vuln`    |       18 |                        0 |  18 |   0 |   0 | yes           |
+| `express-api-vuln`    |       19 |                        0 |  19 |   0 |   0 | yes           |
 | `next-supabase-clean` |        0 |                        1 |   0 |   0 |   0 | yes           |
 | `next-supabase-vuln`  |       30 |                        0 |  30 |   0 |   2 | yes           |
 | `vite-firebase-clean` |        0 |                        0 |   0 |   0 |   0 | yes           |
