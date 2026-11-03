@@ -4,6 +4,7 @@ import type { FileRecord } from '../discovery/walker.ts';
 import type { Diagnostic, FindingInput } from '../findings/finding.ts';
 import type { Severity } from '../findings/severity.ts';
 import type { LineIndex } from '../parsing/text.ts';
+import type { ParsedSql } from '../parsing/sql-parser.ts';
 import type { ParsedTs } from '../parsing/ts-parser.ts';
 import type { Localized } from '../../i18n/locale.ts';
 
@@ -64,6 +65,11 @@ export interface RuleContext {
   lines(file: FileRecord): AsyncIterable<{ readonly text: string; readonly line: number }>;
   /** Parse JS/TS/JSX/TSX. `undefined` for non-code or oversized files. */
   parseTs(file: FileRecord): Promise<ParsedTs | undefined>;
+  /**
+   * Parse PostgreSQL. Never throws: unparseable statements come back as `failures`
+   * (see sql-parser.ts). `undefined` for non-SQL or oversized files.
+   */
+  parseSql(file: FileRecord): Promise<ParsedSql | undefined>;
   /** Report a problem with the scan itself (not a finding). */
   diagnostic(d: Diagnostic): void;
 }

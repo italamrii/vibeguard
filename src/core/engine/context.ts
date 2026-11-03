@@ -4,6 +4,7 @@ import { CODE_KINDS } from '../discovery/file-kind.ts';
 import type { FileRecord } from '../discovery/walker.ts';
 import type { Diagnostic } from '../findings/finding.ts';
 import { isBinaryFile, LineIndex, STREAM_THRESHOLD_BYTES, streamLines } from '../parsing/text.ts';
+import { parseSql, type ParsedSql } from '../parsing/sql-parser.ts';
 import { parseTypeScript, type ParsedTs } from '../parsing/ts-parser.ts';
 import type { FileFilter, RuleContext, TextFile } from './rule.ts';
 
@@ -21,6 +22,7 @@ export class ProjectContext implements RuleContext {
   private readonly byPath: ReadonlyMap<string, FileRecord>;
   private readonly textCache = new Map<string, Promise<TextFile | undefined>>();
   private readonly tsCache = new Map<string, Promise<ParsedTs | undefined>>();
+  private readonly sqlCache = new Map<string, Promise<ParsedSql | undefined>>();
   private readonly diags: Diagnostic[] = [];
 
   constructor(root: string, settings: Settings, files: readonly FileRecord[]) {
@@ -106,6 +108,16 @@ export class ProjectContext implements RuleContext {
         return parseTypeScript(file.relPath, t.text, file.kind);
       });
       this.tsCache.set(file.relPath, p);
+    }
+    return p;
+  }
+
+  parseSql(file: FileRecord): Promise<ParsedSql | undefined> {
+    if (file.kind !== 'sql') return Promise.resolve(undefined);
+    let p = this.sqlCache.get(file.relPath);
+    if (!p) {
+      p = this.readText(file).then((t) => (t ? parseSql(t.text) : undefined));
+      this.sqlCache.set(file.relPath, p);
     }
     return p;
   }
