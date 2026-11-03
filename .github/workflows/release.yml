@@ -1,0 +1,73 @@
+# Publish @italamrii/vibeguard to npm with provenance.
+#
+# NOT active until the maintainer decides to release. It runs only when a version tag
+# (v1.2.3) is pushed, and the publish job waits for manual approval in the "npm-release"
+# environment (Settings → Environments → npm-release → Required reviewers). Nothing in
+# this repository pushes tags automatically.
+#
+# Provenance needs a public repository, `id-token: write`, and a GitHub-hosted runner.
+# Authentication: an npm automation token in the environment secret NPM_TOKEN, or npm
+# trusted publishing (OIDC) configured for this workflow on npmjs.com, in which case the
+# token is not needed.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify release candidate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tag matches package.json version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "tag ${GITHUB_REF_NAME} != v${version}"; exit 1; }
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run accuracy -- --check
+      - run: npm run sarif:check
+      - run: npm run docs:rules -- --check
+      - run: npm run licenses:check -- --check
+      - run: npm audit --omit=dev --audit-level=low
+      - run: node dist/cli/index.js scan . --config .vibeguard.yml --fail-on low
+      - run: npm run pack:check
+
+  publish:
+    name: publish to npm (requires approval)
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+      - run: npm run pack:check
+      # publishConfig in package.json sets access=public and provenance=true;
+      # --ignore-scripts because the build above already ran (prepack would rebuild).
+      - run: npm publish --provenance --access public --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
