@@ -47,8 +47,10 @@ try {
       fp += s.fp;
       fn += s.fn;
     }
+    const active = r.findings.filter((f) => !f.suppression).length;
+    const suppressed = r.findings.length - active;
     appRows.push(
-      `| \`${app}\` | ${r.findings.length} | ${tp} | ${fp} | ${fn} | ${r.complete ? 'yes' : '**no**'} |`,
+      `| \`${app}\` | ${active} | ${suppressed} | ${tp} | ${fp} | ${fn} | ${r.complete ? 'yes' : '**no**'} |`,
     );
     for (const f of c.falsePositives)
       problems.push(`FP ${app}: ${f.ruleId} ${f.location.file}:${f.location.line}`);
@@ -87,8 +89,8 @@ ${ruleRows.join('\n')}
 
 ## Per app
 
-| App | Findings | TP | FP | FN | Scan complete |
-| --- | -: | -: | -: | -: | --- |
+| App | Findings | Suppressed (with reason) | TP | FP | FN | Scan complete |
+| --- | -: | -: | -: | -: | -: | --- |
 ${appRows.join('\n')}
 
 ## Known misses
@@ -97,6 +99,13 @@ Declared with \`vg-expect-miss\` in the fixtures:
 
 - \`secrets/provider-key\`: a key assembled by string concatenation (\`'sk' + '_live_' + body\`)
   is not reassembled. Detection is per literal.
+- \`supabase/rls-disabled\`: RLS disabled from inside a PL/pgSQL \`DO\` block. Blocks are not
+  executed. The table is marked unknown and a \`dynamic-sql\` notice makes the report state
+  that coverage is partial, but no finding is raised for the table itself.
+
+The clean apps contain one suppressed finding by design: a read-only \`USING (true)\` policy on
+\`public.countries\` (public reference data), reported at low severity / low confidence and
+suppressed in the fixture with a reason, which is the intended workflow for deliberate exceptions.
 `;
   const target = path.join(path.dirname(FIXTURES_DIR), 'docs', 'accuracy.md');
   // Format like the rest of the repo so regenerating never breaks `prettier --check`.

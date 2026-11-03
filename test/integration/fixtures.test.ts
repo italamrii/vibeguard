@@ -52,12 +52,34 @@ describe('fixture apps', () => {
     (app) => {
       const r = result(app);
       expect(r.complete).toBe(true);
-      expect(r.findings.map((f) => `${f.ruleId} ${f.location.file}:${f.location.line}`)).toEqual(
-        [],
-      );
+      const active = r.findings.filter((f) => !f.suppression);
+      expect(active.map((f) => `${f.ruleId} ${f.location.file}:${f.location.line}`)).toEqual([]);
       expect(r.diagnostics.filter((d) => d.level !== 'info')).toEqual([]);
     },
   );
+
+  it('documents the one intentional exception in the clean apps with a reasoned suppression', () => {
+    const suppressed = built.apps
+      .filter((a) => a.endsWith('-clean'))
+      .flatMap((a) => result(a).findings.filter((f) => f.suppression));
+    expect(
+      suppressed.map((f) => [f.ruleId, f.severity, f.confidence, f.suppression?.reason]),
+    ).toEqual([
+      [
+        'supabase/permissive-policy',
+        'low',
+        'low',
+        'countries is public reference data, read-only by design',
+      ],
+    ]);
+  });
+
+  it('surfaces coverage gaps instead of hiding them', () => {
+    const codes = (app: string) => result(app).diagnostics.map((d) => d.code);
+    expect(codes('next-supabase-vuln')).toContain('parse-failed');
+    expect(codes('next-supabase-vuln')).toContain('dynamic-sql');
+    expect(codes('vite-firebase-vuln')).toContain('no-migrations');
+  });
 
   it.each(['next-supabase-vuln', 'express-api-vuln', 'vite-firebase-vuln'])(
     '%s matches its annotations exactly (no false positives, no unexpected misses)',

@@ -12,25 +12,31 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 
 ## Per rule
 
-| Rule                         |     TP |    FP |    FN | of which known misses |  Precision |    Recall |
-| ---------------------------- | -----: | ----: | ----: | --------------------: | ---------: | --------: |
-| `secrets/provider-key`       |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
-| `secrets/private-key`        |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/high-entropy`       |      7 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/env-file-committed` |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/client-exposed-env` |      9 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| **All rules**                | **48** | **0** | **1** |                 **1** | **100.0%** | **98.0%** |
+| Rule                                 |     TP |    FP |    FN | of which known misses |  Precision |    Recall |
+| ------------------------------------ | -----: | ----: | ----: | --------------------: | ---------: | --------: |
+| `secrets/provider-key`               |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
+| `secrets/private-key`                |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/high-entropy`               |      7 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/env-file-committed`         |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/client-exposed-env`         |      9 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/rls-disabled`              |      4 |     0 |     1 |                     1 |     100.0% |     80.0% |
+| `supabase/rls-no-policies`           |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/permissive-policy`         |      4 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/service-role-in-client`    |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/security-definer-view`     |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/security-definer-function` |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| **All rules**                        | **62** | **0** | **2** |                 **2** | **100.0%** | **96.9%** |
 
 ## Per app
 
-| App                   | Findings |  TP |  FP |  FN | Scan complete |
-| --------------------- | -------: | --: | --: | --: | ------------- |
-| `express-api-clean`   |        0 |   0 |   0 |   0 | yes           |
-| `express-api-vuln`    |       18 |  18 |   0 |   0 | yes           |
-| `next-supabase-clean` |        0 |   0 |   0 |   0 | yes           |
-| `next-supabase-vuln`  |       17 |  17 |   0 |   1 | yes           |
-| `vite-firebase-clean` |        0 |   0 |   0 |   0 | yes           |
-| `vite-firebase-vuln`  |       13 |  13 |   0 |   0 | yes           |
+| App                   | Findings | Suppressed (with reason) |  TP |  FP |  FN | Scan complete |
+| --------------------- | -------: | -----------------------: | --: | --: | --: | ------------- |
+| `express-api-clean`   |        0 |                        0 |   0 |   0 |   0 | yes           |
+| `express-api-vuln`    |       18 |                        0 |  18 |   0 |   0 | yes           |
+| `next-supabase-clean` |        0 |                        1 |   0 |   0 |   0 | yes           |
+| `next-supabase-vuln`  |       30 |                        0 |  30 |   0 |   2 | yes           |
+| `vite-firebase-clean` |        0 |                        0 |   0 |   0 |   0 | yes           |
+| `vite-firebase-vuln`  |       14 |                        0 |  14 |   0 |   0 | yes           |
 
 ## Known misses
 
@@ -38,3 +44,10 @@ Declared with `vg-expect-miss` in the fixtures:
 
 - `secrets/provider-key`: a key assembled by string concatenation (`'sk' + '_live_' + body`)
   is not reassembled. Detection is per literal.
+- `supabase/rls-disabled`: RLS disabled from inside a PL/pgSQL `DO` block. Blocks are not
+  executed. The table is marked unknown and a `dynamic-sql` notice makes the report state
+  that coverage is partial, but no finding is raised for the table itself.
+
+The clean apps contain one suppressed finding by design: a read-only `USING (true)` policy on
+`public.countries` (public reference data), reported at low severity / low confidence and
+suppressed in the fixture with a reason, which is the intended workflow for deliberate exceptions.
