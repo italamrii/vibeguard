@@ -125,3 +125,36 @@ describe('vibeguard CLI', () => {
     expect(r.stdout).toContain('test/marker');
   });
 });
+
+describe('Arabic in the terminal (ADR-0013)', () => {
+  it('prints a bilingual hint and an English report for --lang ar with terminal output', async () => {
+    const root = await makeProject({ 'a.ts': 'VG_TEST_MARKER' });
+    const r = await cli(['scan', root, '--lang', 'ar', '--fail-on', 'none']);
+    expect(r.stdout).toContain('Arabic is not shown in the terminal');
+    expect(r.stdout).toContain('لا تُعرض اللغة العربية في الطرفية');
+    expect(r.stdout).toContain('VibeGuard security report');
+  });
+
+  it('prints CLI errors in English, then Arabic, with --lang ar', async () => {
+    const r = await cli(['scan', '/definitely/not/here', '--lang', 'ar']);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toBe(
+      'vibeguard: path not found: /definitely/not/here\nvibeguard: المسار غير موجود: /definitely/not/here\n',
+    );
+  });
+
+  it('keeps Arabic for file formats', async () => {
+    const root = await makeProject({ 'a.ts': 'VG_TEST_MARKER' });
+    const r = await cli([
+      'scan',
+      root,
+      '--lang',
+      'ar',
+      '--format',
+      'markdown',
+      '--fail-on',
+      'none',
+    ]);
+    expect(r.stdout.startsWith('<div dir="rtl">')).toBe(true);
+  });
+});

@@ -3,7 +3,7 @@ import type { ScanResult } from '../core/engine/engine.ts';
 import type { Finding } from '../core/findings/finding.ts';
 import type { Severity } from '../core/findings/severity.ts';
 import { isolateLtr } from '../i18n/bidi.ts';
-import { interpolate } from '../i18n/locale.ts';
+import { interpolate, isRtl } from '../i18n/locale.ts';
 import { UI } from '../i18n/ui.ts';
 import {
   activeFindings,
@@ -40,6 +40,12 @@ function palette(color: boolean): Palette {
 export const terminalReporter: Reporter = {
   format: 'terminal',
   render(result: ScanResult, opts: ReportOptions): string {
+    // ADR-0013: terminals cannot be relied on to lay out RTL text. For RTL locales, print a
+    // bilingual hint and the report body in English instead of a garbled Arabic report.
+    if (isRtl(opts.locale)) {
+      const hint = `${UI.en.terminalRtlHint}\n${UI[opts.locale].terminalRtlHint}\n\n`;
+      return hint + terminalReporter.render(result, { ...opts, locale: 'en' });
+    }
     const { locale } = opts;
     const ui = UI[locale];
     const p = palette(opts.color);

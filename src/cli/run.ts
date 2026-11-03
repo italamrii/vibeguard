@@ -14,7 +14,7 @@ import {
   type Confidence,
   type Severity,
 } from '../core/findings/severity.ts';
-import { isLocale, LOCALES, type Locale } from '../i18n/locale.ts';
+import { interpolate, isLocale, LOCALES, type Locale } from '../i18n/locale.ts';
 import { UI } from '../i18n/ui.ts';
 import { REPORT_FORMATS, REPORTERS } from '../reporters/index.ts';
 import { ALL_RULES } from '../rules/index.ts';
@@ -73,6 +73,17 @@ interface ScanFlags {
 }
 
 /** Entry point shared by the binary and the tests. Returns the process exit code. */
+export type CliMessage = keyof (typeof UI)['en']['cli'];
+
+/**
+ * CLI messages go to a terminal, where Arabic often renders incorrectly (ADR-0013): with
+ * --lang ar the English line is printed first and the Arabic line follows it.
+ */
+export function cliMessage(key: CliMessage, params: Record<string, string>, lang: Locale): string {
+  const line = (l: Locale): string => `vibeguard: ${interpolate(UI[l].cli[key], params)}\n`;
+  return lang === 'en' ? line('en') : `${line('en')}${line(lang)}`;
+}
+
 export async function run(
   argv: readonly string[],
   io: CliIO,
@@ -167,13 +178,16 @@ async function scanCommand(
   rules: readonly Rule[],
 ): Promise<number> {
   const root = path.resolve(io.cwd, target);
+  const say = (key: CliMessage, params: Record<string, string> = {}): void => {
+    io.stderr(cliMessage(key, params, flags.lang));
+  };
   try {
     if (!(await stat(root)).isDirectory()) {
-      io.stderr(`vibeguard: not a directory: ${target}\n`);
+      say('notADirectory', { path: target });
       return ExitCode.UsageError;
     }
   } catch {
-    io.stderr(`vibeguard: path not found: ${target}\n`);
+    say('pathNotFound', { path: target });
     return ExitCode.UsageError;
   }
 
@@ -181,10 +195,8 @@ async function scanCommand(
   if (flags.output !== undefined) {
     outputPath = path.resolve(io.cwd, flags.output);
     if (await isInside(outputPath, root)) {
-      io.stderr(
-        'vibeguard: refusing to write the report inside the scanned project (VibeGuard never modifies it).\n' +
-          'Write it elsewhere, e.g. --output "$RUNNER_TEMP/vibeguard.sarif", or redirect stdout.\n',
-      );
+      say('outputInsideProject');
+      say('outputHint');
       return ExitCode.UsageError;
     }
   }
@@ -201,7 +213,7 @@ async function scanCommand(
     });
   } catch (err) {
     if (err instanceof ConfigError) {
-      io.stderr(`vibeguard: ${err.file}: ${err.message}\n`);
+      say('configError', { file: err.file, message: err.message });
       return ExitCode.UsageError;
     }
     throw err;
@@ -209,7 +221,7 @@ async function scanCommand(
 
   const unknown = Object.keys(settings.rules).filter((id) => !rules.some((r) => r.meta.id === id));
   if (unknown.length > 0) {
-    io.stderr(`vibeguard: config refers to unknown rule(s): ${unknown.join(', ')}\n`);
+    say('unknownRules', { rules: unknown.join(', ') });
     return ExitCode.UsageError;
   }
 
