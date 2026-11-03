@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -39,6 +41,21 @@ app.post('/api/reset-password', async (req, res) => {
   await User.updateOne({ email: req.body.email }, { resetToken: Math.random().toString(36) });
   res.sendStatus(202);
 });
+
+// vg-expect: endpoints/unauthenticated-data-access
+app.post('/api/upload', async (req, res) => {
+  await fs.promises.writeFile(path.join(__dirname, '../uploads', req.body.name), req.body.data);
+  res.sendStatus(201);
+});
+
+// Registered BEFORE the auth middleware below, so that middleware does not protect it.
+// vg-expect: endpoints/unauthenticated-data-access
+app.post('/api/admin/broadcast', async (req, res) => {
+  await User.updateMany({}, { notice: req.body.notice });
+  res.sendStatus(204);
+});
+
+app.use(requireAuth);
 
 app.use('/api/orders', require('./routes/orders'));
 

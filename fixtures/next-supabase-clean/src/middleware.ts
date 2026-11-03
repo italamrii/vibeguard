@@ -14,4 +14,4 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ['/dashboard/:path*', '/api/admin/:path*'] };
+export const config = { matcher: ['/dashboard/:path*', '/api/admin/:path*', '/api/settings/:path*'] };
