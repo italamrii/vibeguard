@@ -12,31 +12,34 @@ or recall. See [threat-model.md](threat-model.md) for what the rules cannot dete
 
 ## Per rule
 
-| Rule                                 |     TP |    FP |    FN | of which known misses |  Precision |    Recall |
-| ------------------------------------ | -----: | ----: | ----: | --------------------: | ---------: | --------: |
-| `secrets/provider-key`               |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
-| `secrets/private-key`                |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/high-entropy`               |      8 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/env-file-committed`         |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `secrets/client-exposed-env`         |      9 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `supabase/rls-disabled`              |      4 |     0 |     1 |                     1 |     100.0% |     80.0% |
-| `supabase/rls-no-policies`           |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `supabase/permissive-policy`         |      4 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `supabase/service-role-in-client`    |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `supabase/security-definer-view`     |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| `supabase/security-definer-function` |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
-| **All rules**                        | **63** | **0** | **2** |                 **2** | **100.0%** | **96.9%** |
+| Rule                                    |     TP |    FP |    FN | of which known misses |  Precision |    Recall |
+| --------------------------------------- | -----: | ----: | ----: | --------------------: | ---------: | --------: |
+| `secrets/provider-key`                  |     27 |     0 |     1 |                     1 |     100.0% |     96.4% |
+| `secrets/private-key`                   |      2 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/high-entropy`                  |      8 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/env-file-committed`            |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `secrets/client-exposed-env`            |      9 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/rls-disabled`                 |      4 |     0 |     1 |                     1 |     100.0% |     80.0% |
+| `supabase/rls-no-policies`              |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/permissive-policy`            |      4 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/service-role-in-client`       |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/security-definer-view`        |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `supabase/security-definer-function`    |      1 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `endpoints/unauthenticated-data-access` |     10 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `endpoints/cors-wildcard-credentials`   |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| `endpoints/auth-route-no-rate-limit`    |      3 |     0 |     0 |                     0 |     100.0% |    100.0% |
+| **All rules**                           | **79** | **0** | **2** |                 **2** | **100.0%** | **97.5%** |
 
 ## Per app
 
 | App                   | Findings | Suppressed (with reason) |  TP |  FP |  FN | Scan complete |
 | --------------------- | -------: | -----------------------: | --: | --: | --: | ------------- |
 | `express-api-clean`   |        0 |                        0 |   0 |   0 |   0 | yes           |
-| `express-api-vuln`    |       19 |                        0 |  19 |   0 |   0 | yes           |
+| `express-api-vuln`    |       26 |                        0 |  26 |   0 |   0 | yes           |
 | `next-supabase-clean` |        0 |                        1 |   0 |   0 |   0 | yes           |
-| `next-supabase-vuln`  |       30 |                        0 |  30 |   0 |   2 | yes           |
+| `next-supabase-vuln`  |       37 |                        0 |  37 |   0 |   2 | yes           |
 | `vite-firebase-clean` |        0 |                        0 |   0 |   0 |   0 | yes           |
-| `vite-firebase-vuln`  |       14 |                        0 |  14 |   0 |   0 | yes           |
+| `vite-firebase-vuln`  |       16 |                        0 |  16 |   0 |   0 | yes           |
 
 ## Known misses
 
