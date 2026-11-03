@@ -8,6 +8,7 @@ import { UI } from '../i18n/ui.ts';
 import {
   activeFindings,
   countFindings,
+  isPartialCoverage,
   renderDiagnostic,
   renderMessage,
   ruleDocsUrl,
@@ -65,6 +66,7 @@ export const markdownReporter: Reporter = {
     if (rtl) out.push('<div dir="rtl">', '');
     out.push(`# ${ui.reportTitle}`, '', `> ${ui.ownCodeNotice}`, '');
     if (!result.complete) out.push(`> [!WARNING]`, `> ${ui.incomplete}`, '');
+    if (isPartialCoverage(result)) out.push(`> [!WARNING]`, `> ${ui.partialCoverage}`, '');
 
     out.push(`## ${ui.summary}`, '');
     out.push(
@@ -89,7 +91,7 @@ export const markdownReporter: Reporter = {
 
     const findings = activeFindings(result);
     if (findings.length === 0) {
-      out.push(ui.noFindings, '');
+      out.push(isPartialCoverage(result) ? ui.noFindingsPartial : ui.noFindings, '');
     } else {
       findings.forEach((f, i) => out.push(...renderFinding(f, i + 1)));
       out.push(`## ${ui.howToFix}`, '');

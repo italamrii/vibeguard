@@ -79,6 +79,20 @@ export function countFindings(findings: readonly Finding[]): Counts {
   return { bySeverity, active, suppressed };
 }
 
+/**
+ * Diagnostics meaning part of the project could not be analysed. When any is present,
+ * no reporter may present the result as clean.
+ */
+const PARTIAL_COVERAGE_CODES: ReadonlySet<string> = new Set([
+  'parse-failed',
+  'no-migrations',
+  'dynamic-sql',
+]);
+
+export function isPartialCoverage(result: ScanResult): boolean {
+  return result.diagnostics.some((d) => PARTIAL_COVERAGE_CODES.has(d.code));
+}
+
 export function activeFindings(result: ScanResult): readonly Finding[] {
   return result.findings.filter((f) => !f.suppression);
 }

@@ -10,6 +10,7 @@
     "tool",
     "locale",
     "complete",
+    "partialCoverage",
     "summary",
     "findings",
     "diagnostics",
@@ -31,6 +32,10 @@
     "complete": {
       "type": "boolean",
       "description": "False when a rule crashed or a file could not be processed. A false value means the absence of findings proves nothing."
+    },
+    "partialCoverage": {
+      "type": "boolean",
+      "description": "True when part of the project could not be analysed (e.g. an unparseable migration, or Supabase in use with no migrations). Zero findings then does not mean clean."
     },
     "summary": {
       "type": "object",

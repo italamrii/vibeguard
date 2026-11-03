@@ -74,4 +74,6 @@ export type DiagnosticCode =
   | 'invalid-suppression'
   | 'unused-suppression'
   | 'symlink-skipped'
-  | 'git-unavailable';
+  | 'git-unavailable'
+  | 'no-migrations'
+  | 'dynamic-sql';

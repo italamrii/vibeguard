@@ -2,6 +2,7 @@ import type { ScanResult } from '../core/engine/engine.ts';
 import { UI } from '../i18n/ui.ts';
 import {
   countFindings,
+  isPartialCoverage,
   renderDiagnostic,
   renderMessage,
   ruleDocsUrl,
@@ -31,6 +32,7 @@ export const jsonReporter: Reporter = {
       tool: { name: 'vibeguard', version: opts.toolVersion },
       locale: opts.locale,
       complete: result.complete,
+      partialCoverage: isPartialCoverage(result),
       summary: {
         filesScanned: result.filesScanned,
         durationMs: result.durationMs,

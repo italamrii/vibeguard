@@ -13,6 +13,9 @@ export interface UiStrings {
   readonly summary: string;
   readonly findingsCount: string; // {count}
   readonly noFindings: string;
+  /** Shown instead of noFindings when part of the project could not be analysed. */
+  readonly noFindingsPartial: string;
+  readonly partialCoverage: string;
   readonly filesScanned: string; // {count}, {ms}
   readonly belowThreshold: string; // {count}, {threshold}
   readonly suppressedCount: string; // {count}
@@ -46,6 +49,10 @@ const en: UiStrings = {
   summary: 'Summary',
   findingsCount: 'Findings: {count}',
   noFindings: 'No findings.',
+  noFindingsPartial:
+    'No findings in the parts that could be analysed. Coverage is PARTIAL: see the scan diagnostics before treating this project as clean.',
+  partialCoverage:
+    'PARTIAL COVERAGE: some files could not be fully analysed (see the scan diagnostics). Findings for affected tables have lowered confidence.',
   filesScanned: 'Files scanned: {count} ({ms} ms)',
   belowThreshold: 'Not shown (below minimum confidence {threshold}): {count}',
   suppressedCount: 'Suppressed by inline comments: {count}',
@@ -68,11 +75,16 @@ const en: UiStrings = {
     'rule-crashed': 'Rule {rule} failed: {error}',
     'file-unreadable': 'File could not be read.',
     'file-too-large': 'File skipped: {size} bytes exceeds the {limit}-byte limit.',
-    'parse-failed': 'File could not be parsed: {error}',
+    'parse-failed':
+      'SQL statement could not be parsed ({error}); tables it touches are marked unknown.',
     'invalid-suppression': 'Invalid suppression comment ({problem}) {detail}; it has no effect.',
     'unused-suppression': 'Suppression for {rules} matched no finding; remove it.',
     'symlink-skipped': 'Symbolic link not followed.',
     'git-unavailable': 'git is unavailable; committed-file checks fall back to .gitignore rules.',
+    'dynamic-sql':
+      'A PL/pgSQL block or function body changes tables or policies dynamically ({tables}); VibeGuard does not execute it, so their final Row Level Security state is unknown.',
+    'no-migrations':
+      'Supabase is used but no SQL migrations were found ({where}). Tables created in the Supabase dashboard are invisible to VibeGuard, so Row Level Security could NOT be checked. Export the schema with `supabase db pull` and commit the migrations.',
   },
   suppressionProblems: {
     'missing-reason': 'a reason after "--" is required',
@@ -92,6 +104,10 @@ const ar: UiStrings = {
   summary: 'الملخص',
   findingsCount: 'عدد النتائج: {count}',
   noFindings: 'لا توجد نتائج.',
+  noFindingsPartial:
+    'لا توجد نتائج في الأجزاء التي أمكن تحليلها. التغطية جزئية: راجع تشخيصات الفحص قبل اعتبار هذا المشروع سليمًا.',
+  partialCoverage:
+    'تغطية جزئية: تعذّر تحليل بعض الملفات تحليلًا كاملًا (راجع تشخيصات الفحص). خُفِّضت درجة الثقة في النتائج المتعلقة بالجداول المتأثرة.',
   filesScanned: 'عدد الملفات المفحوصة: {count} ({ms} ملّي ثانية)',
   belowThreshold: 'نتائج لم تُعرض لأن درجة ثقتها أقل من الحد الأدنى ({threshold}): {count}',
   suppressedCount: 'نتائج مكتومة بتعليقات داخل الشيفرة: {count}',
@@ -114,11 +130,15 @@ const ar: UiStrings = {
     'rule-crashed': 'فشلت القاعدة {rule}: {error}',
     'file-unreadable': 'تعذّرت قراءة الملف.',
     'file-too-large': 'تم تخطي الملف: حجمه {size} بايت ويتجاوز الحد {limit} بايت.',
-    'parse-failed': 'تعذّر تحليل الملف: {error}',
+    'parse-failed': 'تعذّر تحليل جملة SQL ({error})؛ اعتُبرت الجداول التي تتعلق بها مجهولة الحالة.',
     'invalid-suppression': 'تعليق كتم غير صالح ({problem}) {detail}؛ ليس له أي أثر.',
     'unused-suppression': 'تعليق الكتم الخاص بـ {rules} لم يطابق أي نتيجة؛ احذفه.',
     'symlink-skipped': 'لم يتم تتبّع الرابط الرمزي.',
     'git-unavailable': 'أداة git غير متاحة؛ يُعتمد على قواعد .gitignore بدلًا من ذلك.',
+    'dynamic-sql':
+      'كتلة PL/pgSQL أو جسم دالة يغيّر الجداول أو السياسات ديناميكيًا ({tables})؛ لا ينفّذها VibeGuard، لذا تبقى الحالة النهائية لـ Row Level Security لهذه الجداول مجهولة.',
+    'no-migrations':
+      'يستخدم المشروع Supabase لكن لم يُعثر على ملفات ترحيل SQL ({where}). الجداول التي أُنشئت من لوحة تحكم Supabase غير مرئية لـ VibeGuard، لذا لم يكن ممكنًا فحص Row Level Security. صدّر المخطط بالأمر `supabase db pull` وأودِع ملفات الترحيل.',
   },
   suppressionProblems: {
     'missing-reason': 'يجب كتابة سبب بعد "--"',

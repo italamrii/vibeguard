@@ -9,6 +9,7 @@ import {
   activeFindings,
   countFindings,
   formatLocation,
+  isPartialCoverage,
   renderDiagnostic,
   renderMessage,
   ruleDocsUrl,
@@ -49,6 +50,7 @@ export const terminalReporter: Reporter = {
     out.push(p.bold(ui.reportTitle), p.dim(ui.ownCodeNotice), '');
 
     if (!result.complete) out.push(p.warn(`! ${ui.incomplete}`), '');
+    if (isPartialCoverage(result)) out.push(p.warn(`! ${ui.partialCoverage}`), '');
 
     const findings = groupByFile(activeFindings(result));
     let currentFile: string | undefined;
@@ -133,7 +135,7 @@ function renderSummary(result: ScanResult, opts: ReportOptions, p: Palette): str
   const counts = countFindings(result.findings);
   const out: string[] = [];
   if (counts.active === 0) {
-    out.push(p.bold(ui.noFindings));
+    out.push(p.bold(isPartialCoverage(result) ? ui.noFindingsPartial : ui.noFindings));
   } else {
     const parts = (['critical', 'high', 'medium', 'low'] as const)
       .filter((s) => counts.bySeverity[s] > 0)

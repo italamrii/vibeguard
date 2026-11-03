@@ -13,7 +13,8 @@ export interface Settings {
     readonly buildOutputDirs: readonly string[];
   };
   readonly supabase: {
-    readonly migrationsDirs: readonly string[];
+    /** `undefined` means "every directory named supabase/migrations, at any depth". */
+    readonly migrationsDirs: readonly string[] | undefined;
     /** `undefined` means "derive from supabase/config.toml, else ['public']". */
     readonly exposedSchemas: readonly string[] | undefined;
   };
@@ -29,7 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   failOn: 'high',
   minConfidence: 'low',
   discovery: { skipBuildOutput: true, buildOutputDirs: DEFAULT_BUILD_OUTPUT_DIRS },
-  supabase: { migrationsDirs: ['supabase/migrations'], exposedSchemas: undefined },
+  supabase: { migrationsDirs: undefined, exposedSchemas: undefined },
   endpoints: { authFunctions: [], rateLimitFunctions: [] },
 };
 
