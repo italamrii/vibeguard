@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/italamrii/vibeguard/main/schema/findings.v1.schema.json",
+  "title": "VibeGuard JSON report, schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "tool",
+    "locale",
+    "complete",
+    "summary",
+    "findings",
+    "diagnostics",
+    "notice"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "vibeguard" },
+        "version": { "type": "string" }
+      }
+    },
+    "locale": { "enum": ["en", "ar"] },
+    "complete": {
+      "type": "boolean",
+      "description": "False when a rule crashed or a file could not be processed. A false value means the absence of findings proves nothing."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filesScanned",
+        "durationMs",
+        "findings",
+        "total",
+        "suppressed",
+        "belowConfidenceThreshold",
+        "failOn",
+        "minConfidence"
+      ],
+      "properties": {
+        "filesScanned": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "findings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["critical", "high", "medium", "low"],
+          "properties": {
+            "critical": { "type": "integer", "minimum": 0 },
+            "high": { "type": "integer", "minimum": 0 },
+            "medium": { "type": "integer", "minimum": 0 },
+            "low": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "total": { "type": "integer", "minimum": 0 },
+        "suppressed": { "type": "integer", "minimum": 0 },
+        "belowConfidenceThreshold": { "type": "integer", "minimum": 0 },
+        "failOn": { "enum": ["critical", "high", "medium", "low", "none"] },
+        "minConfidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "notice": { "type": "string" }
+  },
+  "$defs": {
+    "severity": { "enum": ["critical", "high", "medium", "low"] },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "line", "column"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "POSIX path relative to the scan root."
+        },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "endColumn": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleId",
+        "title",
+        "severity",
+        "confidence",
+        "location",
+        "message",
+        "messageId",
+        "params",
+        "evidence",
+        "cwe",
+        "references",
+        "docsUrl",
+        "fingerprint"
+      ],
+      "properties": {
+        "ruleId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$" },
+        "title": { "type": "string" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "location": { "$ref": "#/$defs/location" },
+        "message": { "type": "string" },
+        "messageId": { "type": "string" },
+        "params": {
+          "type": "object",
+          "additionalProperties": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Redacted. Secrets appear as their first 4 characters plus their length."
+        },
+        "cwe": { "type": "array", "items": { "type": "string", "pattern": "^CWE-[0-9]+$" } },
+        "references": { "type": "array", "items": { "type": "string" } },
+        "docsUrl": { "type": "string" },
+        "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "suppression": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason", "line"],
+          "properties": {
+            "reason": { "type": "string", "minLength": 10 },
+            "line": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "code", "message"],
+      "properties": {
+        "level": { "enum": ["error", "warning", "info"] },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

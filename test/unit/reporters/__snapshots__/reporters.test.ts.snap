@@ -1,0 +1,162 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`markdown reporter > renders Arabic RTL-safe: rtl wrapper, ltr code blocks, isolated inline tokens 1`] = `
+"<div dir="rtl">
+
+# تقرير VibeGuard الأمني
+
+> افحص فقط الشيفرة التي تملكها أو المصرَّح لك بتقييمها.
+
+## الملخص
+
+| حرجة | عالية | متوسطة | منخفضة |
+|---|---|---|---|
+| 0 | 1 | 1 | 0 |
+
+عدد الملفات المفحوصة: 2 (1 ملّي ثانية)  
+نتائج مكتومة بتعليقات داخل الشيفرة: 1
+
+### 1. عالية: علامة اختبار
+
+- **القاعدة:** ⁦\`test/marker\`⁩ · **CWE:** ⁦\`CWE-1\`⁩
+- **الموقع:** ⁦\`src/app.ts:1:1\`⁩
+- **درجة الثقة:** عالية
+- **الدليل:** ⁦\`VG_TEST_MARKER\`⁩
+
+تم العثور على العلامة في ⁦\`src/app.ts\`⁩.
+
+### 2. متوسطة: علامة اختبار
+
+- **القاعدة:** ⁦\`test/marker\`⁩ · **CWE:** ⁦\`CWE-1\`⁩
+- **الموقع:** ⁦\`src/lib.ts:1:1\`⁩
+- **درجة الثقة:** منخفضة (ثقة منخفضة: تحقَّق يدويًا)
+- **الدليل:** ⁦\`VG_TEST_MARKER:low:medium\`⁩
+
+تم العثور على العلامة في ⁦\`src/lib.ts\`⁩.
+
+## طريقة الإصلاح
+
+### ⁦\`test/marker\`⁩ علامة اختبار
+
+يرصد علامة الاختبار.
+
+احذف العلامة.
+
+**نمط معرَّض للخطر**
+
+<div dir="ltr">
+
+\`\`\`ts
+const x = "VG_TEST_MARKER";
+\`\`\`
+
+</div>
+
+**النمط المُصحَّح**
+
+<div dir="ltr">
+
+\`\`\`ts
+const x = "ok";
+\`\`\`
+
+</div>
+
+مراجع: <https://github.com/italamrii/vibeguard/blob/main/docs/rules/test/marker.md> · <https://example.invalid/ref>
+
+## النتائج المكتومة
+
+- ⁦\`test/marker\`⁩ ⁦\`src/app.ts:3\`⁩: السبب: accepted for the demo app
+
+</div>
+"
+`;
+
+exports[`markdown reporter > renders English 1`] = `
+"# VibeGuard security report
+
+> Scan only code you own or are authorized to assess.
+
+## Summary
+
+| Critical | High | Medium | Low |
+|---|---|---|---|
+| 0 | 1 | 1 | 0 |
+
+Files scanned: 2 (1 ms)  
+Suppressed by inline comments: 1
+
+### 1. High: Test marker
+
+- **Rule:** \`test/marker\` · **CWE:** \`CWE-1\`
+- **Location:** \`src/app.ts:1:1\`
+- **Confidence:** High
+- **Evidence:** \`VG_TEST_MARKER\`
+
+Marker found in \`src/app.ts\`.
+
+### 2. Medium: Test marker
+
+- **Rule:** \`test/marker\` · **CWE:** \`CWE-1\`
+- **Location:** \`src/lib.ts:1:1\`
+- **Confidence:** Low (low confidence: verify manually)
+- **Evidence:** \`VG_TEST_MARKER:low:medium\`
+
+Marker found in \`src/lib.ts\`.
+
+## How to fix
+
+### \`test/marker\` Test marker
+
+Flags the test marker.
+
+Remove the marker.
+
+**Vulnerable**
+
+\`\`\`ts
+const x = "VG_TEST_MARKER";
+\`\`\`
+
+**Fixed**
+
+\`\`\`ts
+const x = "ok";
+\`\`\`
+
+References: <https://github.com/italamrii/vibeguard/blob/main/docs/rules/test/marker.md> · <https://example.invalid/ref>
+
+## Suppressed findings
+
+- \`test/marker\` \`src/app.ts:3\`: Reason: accepted for the demo app
+"
+`;
+
+exports[`terminal reporter > renders findings, the remediation section and the summary 1`] = `
+"VibeGuard security report
+Scan only code you own or are authorized to assess.
+
+src/app.ts
+   HIGH  Test marker  test/marker
+    Location: src/app.ts:1:1
+    Marker found in src/app.ts.
+    Evidence: VG_TEST_MARKER
+    Confidence: High
+
+src/lib.ts
+   MEDIUM  Test marker  test/marker
+    Location: src/lib.ts:1:1
+    Marker found in src/lib.ts.
+    Evidence: VG_TEST_MARKER:low:medium
+    Confidence: Low  [low confidence: verify manually]
+
+How to fix
+  test/marker  Test marker
+    Remove the marker.
+    Docs: https://github.com/italamrii/vibeguard/blob/main/docs/rules/test/marker.md
+
+Summary: Findings: 2 (1 High, 1 Medium)
+Suppressed by inline comments: 1
+Files scanned: 2 (1 ms)
+"
+`;
