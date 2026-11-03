@@ -34,6 +34,20 @@ export interface UiStrings {
   readonly reason: string;
   readonly docs: string;
   readonly diagnostics: Readonly<Record<DiagnosticCode, string>>;
+  readonly level: Readonly<Record<'error' | 'warning' | 'info', string>>;
+  /** Printed when --lang ar is used with terminal output (ADR-0013). */
+  readonly terminalRtlHint: string;
+  /** SARIF: results beyond GitHub's per-run limit were dropped. {kept} {total} */
+  readonly sarifTruncated: string;
+  readonly cli: {
+    readonly notADirectory: string; // {path}
+    readonly pathNotFound: string; // {path}
+    readonly outputInsideProject: string;
+    readonly outputHint: string;
+    readonly configError: string; // {file} {message}
+    readonly unknownRules: string; // {rules}
+    readonly internalError: string; // {message}
+  };
   readonly suppressionProblems: Readonly<
     Record<'missing-reason' | 'reason-too-short' | 'missing-rule-id' | 'unknown-rule-id', string>
   >;
@@ -85,6 +99,22 @@ const en: UiStrings = {
       'A PL/pgSQL block or function body changes tables or policies dynamically ({tables}); VibeGuard does not execute it, so their final Row Level Security state is unknown.',
     'no-migrations':
       'Supabase is used but no SQL migrations were found ({where}). Tables created in the Supabase dashboard are invisible to VibeGuard, so Row Level Security could NOT be checked. Export the schema with `supabase db pull` and commit the migrations.',
+  },
+  level: { error: 'error', warning: 'warning', info: 'info' },
+  terminalRtlHint:
+    'Arabic is not shown in the terminal: most terminals cannot lay out right-to-left text correctly. This report is in English. For Arabic, use --lang ar --format markdown (or json / sarif).',
+  sarifTruncated:
+    'Only the {kept} most severe of {total} results are included: GitHub code scanning accepts at most 25,000 results per run.',
+  cli: {
+    notADirectory: 'not a directory: {path}',
+    pathNotFound: 'path not found: {path}',
+    outputInsideProject:
+      'refusing to write the report inside the scanned project (VibeGuard never modifies it).',
+    outputHint:
+      'Write it elsewhere, e.g. --output "$RUNNER_TEMP/vibeguard.sarif", or redirect stdout.',
+    configError: '{file}: {message}',
+    unknownRules: 'config refers to unknown rule(s): {rules}',
+    internalError: 'internal error: {message}',
   },
   suppressionProblems: {
     'missing-reason': 'a reason after "--" is required',
@@ -139,6 +169,22 @@ const ar: UiStrings = {
       'كتلة PL/pgSQL أو جسم دالة يغيّر الجداول أو السياسات ديناميكيًا ({tables})؛ لا ينفّذها VibeGuard، لذا تبقى الحالة النهائية لـ Row Level Security لهذه الجداول مجهولة.',
     'no-migrations':
       'يستخدم المشروع Supabase لكن لم يُعثر على ملفات ترحيل SQL ({where}). الجداول التي أُنشئت من لوحة تحكم Supabase غير مرئية لـ VibeGuard، لذا لم يكن ممكنًا فحص Row Level Security. صدّر المخطط بالأمر `supabase db pull` وأودِع ملفات الترحيل.',
+  },
+  level: { error: 'خطأ', warning: 'تحذير', info: 'معلومة' },
+  terminalRtlHint:
+    'لا تُعرض اللغة العربية في الطرفية لأن معظم الطرفيات لا تعرض النصوص من اليمين إلى اليسار بشكل صحيح. هذا التقرير بالإنجليزية. للحصول على تقرير بالعربية استخدم --lang ar --format markdown (أو json / sarif).',
+  sarifTruncated:
+    'أُدرجت أخطر {kept} نتيجة فقط من أصل {total}: يقبل GitHub code scanning بحد أقصى 25,000 نتيجة في كل تشغيل.',
+  cli: {
+    notADirectory: 'ليس مجلدًا: {path}',
+    pathNotFound: 'المسار غير موجود: {path}',
+    outputInsideProject:
+      'تم رفض كتابة التقرير داخل المشروع المفحوص (VibeGuard لا يعدّل المشروع أبدًا).',
+    outputHint:
+      'اكتبه في مكان آخر، مثل --output "$RUNNER_TEMP/vibeguard.sarif"، أو أعد توجيه المخرجات القياسية.',
+    configError: '{file}: {message}',
+    unknownRules: 'ملف الإعدادات يشير إلى قواعد غير معروفة: {rules}',
+    internalError: 'خطأ داخلي: {message}',
   },
   suppressionProblems: {
     'missing-reason': 'يجب كتابة سبب بعد "--"',

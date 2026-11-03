@@ -3,7 +3,7 @@
 exports[`markdown reporter > renders Arabic RTL-safe: rtl wrapper, ltr code blocks, isolated inline tokens 1`] = `
 "<div dir="rtl">
 
-# تقرير VibeGuard الأمني
+# تقرير ⁦VibeGuard⁩ الأمني
 
 > افحص فقط الشيفرة التي تملكها أو المصرَّح لك بتقييمها.
 
@@ -11,23 +11,23 @@ exports[`markdown reporter > renders Arabic RTL-safe: rtl wrapper, ltr code bloc
 
 | حرجة | عالية | متوسطة | منخفضة |
 |---|---|---|---|
-| 0 | 1 | 1 | 0 |
+| ⁦0⁩ | ⁦1⁩ | ⁦1⁩ | ⁦0⁩ |
 
-عدد الملفات المفحوصة: 2 (1 ملّي ثانية)  
-نتائج مكتومة بتعليقات داخل الشيفرة: 1
+عدد الملفات المفحوصة⁦: 2 (1⁩ ملّي ثانية)  
+نتائج مكتومة بتعليقات داخل الشيفرة⁦: 1⁩
 
-### 1. عالية: علامة اختبار
+### ⁦1⁩. عالية: علامة اختبار
 
-- **القاعدة:** ⁦\`test/marker\`⁩ · **CWE:** ⁦\`CWE-1\`⁩
+- **القاعدة:** ⁦\`test/marker\`⁩ · **⁦CWE⁩:** ⁦\`CWE-1\`⁩
 - **الموقع:** ⁦\`src/app.ts:1:1\`⁩
 - **درجة الثقة:** عالية
 - **الدليل:** ⁦\`VG_TEST_MARKER\`⁩
 
 تم العثور على العلامة في ⁦\`src/app.ts\`⁩.
 
-### 2. متوسطة: علامة اختبار
+### ⁦2⁩. متوسطة: علامة اختبار
 
-- **القاعدة:** ⁦\`test/marker\`⁩ · **CWE:** ⁦\`CWE-1\`⁩
+- **القاعدة:** ⁦\`test/marker\`⁩ · **⁦CWE⁩:** ⁦\`CWE-1\`⁩
 - **الموقع:** ⁦\`src/lib.ts:1:1\`⁩
 - **درجة الثقة:** منخفضة (ثقة منخفضة: تحقَّق يدويًا)
 - **الدليل:** ⁦\`VG_TEST_MARKER:low:medium\`⁩
@@ -62,11 +62,11 @@ const x = "ok";
 
 </div>
 
-مراجع: <https://github.com/italamrii/vibeguard/blob/main/docs/rules/test/marker.md> · <https://example.invalid/ref>
+مراجع: ⁦<https://github.com/italamrii/vibeguard/blob/main/docs/rules/test/marker.md>⁩ · ⁦<https://example.invalid/ref>⁩
 
 ## النتائج المكتومة
 
-- ⁦\`test/marker\`⁩ ⁦\`src/app.ts:3\`⁩: السبب: accepted for the demo app
+- ⁦\`test/marker\`⁩ ⁦\`src/app.ts:3\`⁩: السبب: ⁨accepted for the demo app⁩
 
 </div>
 "

@@ -2,7 +2,8 @@ import type { ScanResult } from '../core/engine/engine.ts';
 import type { RuleMeta } from '../core/engine/rule.ts';
 import type { Diagnostic, Finding } from '../core/findings/finding.ts';
 import { SEVERITIES, type Confidence, type Severity } from '../core/findings/severity.ts';
-import { interpolate, type Locale } from '../i18n/locale.ts';
+import { isolateTemplate } from '../i18n/bidi.ts';
+import { interpolate, isRtl, type Locale } from '../i18n/locale.ts';
 import { UI } from '../i18n/ui.ts';
 import { sanitizeUntrusted } from './text-safety.ts';
 
@@ -41,7 +42,10 @@ export function renderMessage(
 ): string {
   const template = meta?.messages[finding.messageId]?.[locale];
   if (template === undefined) return finding.messageId;
-  return interpolate(template, finding.params, (v) => wrap(sanitizeUntrusted(v)));
+  // RTL: isolate LTR runs in the template itself (".env", "RLS", "getUser()"); params are
+  // isolated by `wrap`.
+  const t = isRtl(locale) ? isolateTemplate(template) : template;
+  return interpolate(t, finding.params, (v) => wrap(sanitizeUntrusted(v)));
 }
 
 export function renderDiagnostic(
@@ -59,7 +63,8 @@ export function renderDiagnostic(
   ) {
     params['problem'] = ui.suppressionProblems[problem as keyof typeof ui.suppressionProblems];
   }
-  return interpolate(ui.diagnostics[d.code], params, (v) => wrap(sanitizeUntrusted(v)));
+  const template = isRtl(locale) ? isolateTemplate(ui.diagnostics[d.code]) : ui.diagnostics[d.code];
+  return interpolate(template, params, (v) => wrap(sanitizeUntrusted(v)));
 }
 
 export interface Counts {

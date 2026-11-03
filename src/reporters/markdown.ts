@@ -2,8 +2,8 @@ import type { ScanResult } from '../core/engine/engine.ts';
 import type { RuleMeta } from '../core/engine/rule.ts';
 import type { Finding } from '../core/findings/finding.ts';
 import { SEVERITIES } from '../core/findings/severity.ts';
-import { LRI, PDI } from '../i18n/bidi.ts';
-import { interpolate, isRtl } from '../i18n/locale.ts';
+import { isolateAuto, isolateLtrRuns, LRI, PDI } from '../i18n/bidi.ts';
+import { interpolate, isRtl, type Locale } from '../i18n/locale.ts';
 import { UI } from '../i18n/ui.ts';
 import {
   activeFindings,
@@ -43,12 +43,47 @@ function mdFence(code: string, lang: string): string {
   return `${fence}${lang}\n${code.replace(/\n+$/, '')}\n${fence}`;
 }
 
+/** Markdown "how to fix" section for one rule; shared with SARIF `help.markdown`. */
+export function ruleHelpMarkdown(m: RuleMeta, locale: Locale, headingLevel = 3): string[] {
+  const ui = UI[locale];
+  const rtl = isRtl(locale);
+  const prose = (s: string): string => (rtl ? isolateLtrRuns(s) : s);
+  const code = (s: string): string => (rtl ? `${LRI}${mdCode(s)}${PDI}` : mdCode(s));
+  const block = (body: string, lang: string): string =>
+    rtl ? `<div dir="ltr">\n\n${mdFence(body, lang)}\n\n</div>` : mdFence(body, lang);
+  const link = (u: string): string => (rtl ? `${LRI}<${u}>${PDI}` : `<${u}>`);
+  const r = m.docs.remediation;
+  const refs = [ruleDocsUrl(m.id), ...m.references];
+  return [
+    `${'#'.repeat(headingLevel)} ${code(m.id)} ${prose(m.docs.title[locale])}`,
+    '',
+    prose(m.docs.summary[locale]),
+    '',
+    prose(r.text[locale]),
+    '',
+    `**${prose(ui.vulnerable)}**`,
+    '',
+    block(r.vulnerable, r.codeLanguage),
+    '',
+    `**${prose(ui.fixed)}**`,
+    '',
+    block(r.fixed, r.codeLanguage),
+    '',
+    `${prose(ui.references)}: ${refs.map(link).join(' · ')}`,
+    '',
+  ];
+}
+
 /**
- * RTL-safe Markdown (ADR in docs/adr/0003). For RTL locales:
+ * RTL-safe Markdown (ADR-0013). For RTL locales:
  *  - the whole report is wrapped in <div dir="rtl"> so GitHub lays prose out right-to-left;
  *  - every code block is wrapped in <div dir="ltr"> so code keeps LTR layout;
  *  - every inline LTR token (path, rule id, identifier) is a code span bracketed by
- *    LRI/PDI isolates *outside* the backticks, so copy-pasting the code stays clean.
+ *    LRI/PDI isolates *outside* the backticks, so copy-pasting the code stays clean;
+ *  - every LTR run inside Arabic prose (".env", "Row Level Security", "getUser()", numbers,
+ *    URLs) is isolated by isolateLtrRuns; user-written text (suppression reasons) is
+ *    isolated with FSI because its direction is unknown.
+ * A test fails on any unisolated Latin character on a line that contains Arabic.
  */
 export const markdownReporter: Reporter = {
   format: 'markdown',
@@ -56,24 +91,21 @@ export const markdownReporter: Reporter = {
     const { locale } = opts;
     const ui = UI[locale];
     const rtl = isRtl(locale);
+    const prose = (s: string): string => (rtl ? isolateLtrRuns(s) : s);
     const code = (s: string): string => (rtl ? `${LRI}${mdCode(s)}${PDI}` : mdCode(s));
-    const block = (body: string, lang: string): string =>
-      rtl ? `<div dir="ltr">\n\n${mdFence(body, lang)}\n\n</div>` : mdFence(body, lang);
     const meta = ruleIndex(result);
     const counts = countFindings(result.findings);
     const out: string[] = [];
 
     if (rtl) out.push('<div dir="rtl">', '');
-    out.push(`# ${ui.reportTitle}`, '', `> ${ui.ownCodeNotice}`, '');
-    if (!result.complete) out.push(`> [!WARNING]`, `> ${ui.incomplete}`, '');
-    if (isPartialCoverage(result)) out.push(`> [!WARNING]`, `> ${ui.partialCoverage}`, '');
+    out.push(`# ${prose(ui.reportTitle)}`, '', `> ${prose(ui.ownCodeNotice)}`, '');
+    if (!result.complete) out.push(`> [!WARNING]`, `> ${prose(ui.incomplete)}`, '');
+    if (isPartialCoverage(result)) out.push(`> [!WARNING]`, `> ${prose(ui.partialCoverage)}`, '');
 
-    out.push(`## ${ui.summary}`, '');
-    out.push(
-      `| ${ui.severity.critical} | ${ui.severity.high} | ${ui.severity.medium} | ${ui.severity.low} |`,
-    );
+    out.push(`## ${prose(ui.summary)}`, '');
+    out.push(`| ${SEVERITIES.map((s) => prose(ui.severity[s])).join(' | ')} |`);
     out.push('|---|---|---|---|');
-    out.push(`| ${SEVERITIES.map((s) => counts.bySeverity[s]).join(' | ')} |`, '');
+    out.push(`| ${SEVERITIES.map((s) => prose(String(counts.bySeverity[s]))).join(' | ')} |`, '');
     const metaLines = [
       interpolate(ui.filesScanned, { count: result.filesScanned, ms: result.durationMs }),
     ];
@@ -87,23 +119,24 @@ export const markdownReporter: Reporter = {
         }),
       );
     }
-    out.push(metaLines.join('  \n'), '');
+    out.push(metaLines.map(prose).join('  \n'), '');
 
     const findings = activeFindings(result);
     if (findings.length === 0) {
-      out.push(isPartialCoverage(result) ? ui.noFindingsPartial : ui.noFindings, '');
+      out.push(prose(isPartialCoverage(result) ? ui.noFindingsPartial : ui.noFindings), '');
     } else {
       findings.forEach((f, i) => out.push(...renderFinding(f, i + 1)));
-      out.push(`## ${ui.howToFix}`, '');
-      for (const m of rulesWithFindings(result)) out.push(...renderRemediation(m));
+      out.push(`## ${prose(ui.howToFix)}`, '');
+      for (const m of rulesWithFindings(result)) out.push(...ruleHelpMarkdown(m, locale));
     }
 
     const suppressed = result.findings.filter((f) => f.suppression);
     if (suppressed.length > 0) {
-      out.push(`## ${ui.suppressedTitle}`, '');
+      out.push(`## ${prose(ui.suppressedTitle)}`, '');
       for (const f of suppressed) {
+        const reason = mdText(sanitizeUntrusted(f.suppression?.reason ?? ''));
         out.push(
-          `- ${code(f.ruleId)} ${code(`${f.location.file}:${f.location.line}`)}: ${ui.reason}: ${mdText(sanitizeUntrusted(f.suppression?.reason ?? ''))}`,
+          `- ${code(f.ruleId)} ${code(`${f.location.file}:${f.location.line}`)}: ${prose(ui.reason)}: ${isolateAuto(reason, locale)}`,
         );
       }
       out.push('');
@@ -111,10 +144,10 @@ export const markdownReporter: Reporter = {
 
     const diags = result.diagnostics.filter((d) => d.level !== 'info');
     if (diags.length > 0) {
-      out.push(`## ${ui.diagnosticsTitle}`, '');
+      out.push(`## ${prose(ui.diagnosticsTitle)}`, '');
       for (const d of diags) {
         const where = d.file ? `${code(`${d.file}${d.line ? `:${d.line}` : ''}`)} ` : '';
-        out.push(`- **${d.level}** ${where}${renderDiagnostic(d, locale, code)}`);
+        out.push(`- **${prose(ui.level[d.level])}** ${where}${renderDiagnostic(d, locale, code)}`);
       }
       out.push('');
     }
@@ -125,38 +158,19 @@ export const markdownReporter: Reporter = {
     function renderFinding(f: Finding, n: number): string[] {
       const m = meta.get(f.ruleId);
       const title = m ? m.docs.title[locale] : f.ruleId;
+      const cwe =
+        f.cwe.length > 0
+          ? ` · **${prose(ui.cwe)}:** ${f.cwe.map((c) => code(`CWE-${c}`)).join(', ')}`
+          : '';
       const lines = [
-        `### ${n}. ${ui.severity[f.severity]}: ${title}`,
+        `### ${prose(`${n}.`)} ${prose(ui.severity[f.severity])}: ${prose(title)}`,
         '',
-        `- **${ui.rule}:** ${code(f.ruleId)}${f.cwe.length > 0 ? ` · **${ui.cwe}:** ${f.cwe.map((c) => code(`CWE-${c}`)).join(', ')}` : ''}`,
-        `- **${ui.location}:** ${code(`${f.location.file}:${f.location.line}:${f.location.column}`)}`,
-        `- **${ui.confidenceLabel}:** ${ui.confidence[f.confidence]}${f.confidence === 'low' ? ` (${ui.lowConfidenceTag})` : ''}`,
+        `- **${prose(ui.rule)}:** ${code(f.ruleId)}${cwe}`,
+        `- **${prose(ui.location)}:** ${code(`${f.location.file}:${f.location.line}:${f.location.column}`)}`,
+        `- **${prose(ui.confidenceLabel)}:** ${prose(ui.confidence[f.confidence])}${f.confidence === 'low' ? ` (${prose(ui.lowConfidenceTag)})` : ''}`,
       ];
-      if (f.evidence.length > 0) lines.push(`- **${ui.evidence}:** ${code(f.evidence)}`);
+      if (f.evidence.length > 0) lines.push(`- **${prose(ui.evidence)}:** ${code(f.evidence)}`);
       lines.push('', renderMessage(f, m, locale, code), '');
-      return lines;
-    }
-
-    function renderRemediation(m: RuleMeta): string[] {
-      const r = m.docs.remediation;
-      const lines = [
-        `### ${code(m.id)} ${m.docs.title[locale]}`,
-        '',
-        m.docs.summary[locale],
-        '',
-        r.text[locale],
-        '',
-        `**${ui.vulnerable}**`,
-        '',
-        block(r.vulnerable, r.codeLanguage),
-        '',
-        `**${ui.fixed}**`,
-        '',
-        block(r.fixed, r.codeLanguage),
-        '',
-      ];
-      const refs = [ruleDocsUrl(m.id), ...m.references];
-      lines.push(`${ui.references}: ${refs.map((u) => `<${u}>`).join(' · ')}`, '');
       return lines;
     }
   },
