@@ -83,7 +83,7 @@
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
     "@eslint/js": "10.0.1",
     "@types/node": "20.19.43",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "ajv": "8.20.0",
     "ajv-draft-04": "1.0.0",
     "ajv-formats": "3.0.1",
@@ -91,6 +91,6 @@
     "prettier": "3.9.10",
     "tsx": "4.23.15",
     "typescript-eslint": "8.72.1",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   }
 }
