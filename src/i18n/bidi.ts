@@ -89,6 +89,42 @@ function count(s: string, ch: string): number {
   return n;
 }
 
+/** Index of the last opener that has no matching closer after it, or -1. */
+function unmatchedOpener(s: string): number {
+  const stack: number[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i] ?? '';
+    if (OPENERS.has(c)) stack.push(i);
+    else if (
+      PAIRS[c] !== undefined &&
+      stack.length > 0 &&
+      s[stack[stack.length - 1] ?? -1] === PAIRS[c]
+    )
+      stack.pop();
+  }
+  return stack.length > 0 ? (stack[stack.length - 1] ?? -1) : -1;
+}
+
+/**
+ * Isolate one candidate run. Sentence punctuation that *leads* a run (": 171") belongs to the
+ * Arabic sentence; a bracket opened inside the run but closed in Arabic ("171 (47 ملّي ثانية)")
+ * splits it, and each side is isolated separately.
+ */
+function isolateRun(run: string): string {
+  if (!STRONG_LTR.test(run)) return run;
+  const lead0 = /^[.,;:!?]+(?=\s)|^\s+/.exec(run)?.[0] ?? '';
+  if (lead0 !== '') return lead0 + isolateRun(run.slice(lead0.length));
+  const [lead, body, tail] = trimRun(run);
+  const cut = unmatchedOpener(body);
+  if (cut > 0) {
+    const left = body.slice(0, cut);
+    const right = body.slice(cut);
+    const ws = /\s*$/.exec(left)?.[0] ?? '';
+    return `${lead}${isolateRun(left.slice(0, left.length - ws.length))}${ws}${isolateRun(right)}${tail}`;
+  }
+  return STRONG_LTR.test(body) ? `${lead}${LRI}${body}${PDI}${tail}` : run;
+}
+
 /**
  * Wrap every LTR run in `text` with LRI…PDI. Text already inside isolates is left alone.
  * Intended for RTL prose; safe to call on LTR text (it would isolate everything).
@@ -98,11 +134,7 @@ export function isolateLtrRuns(text: string): string {
   let depth = 0;
   let segment = '';
   const flush = (): void => {
-    out += segment.replace(RUN, (run) => {
-      if (!STRONG_LTR.test(run)) return run;
-      const [lead, body, tail] = trimRun(run);
-      return STRONG_LTR.test(body) ? `${lead}${LRI}${body}${PDI}${tail}` : run;
-    });
+    out += segment.replace(RUN, isolateRun);
     segment = '';
   };
   for (const ch of text) {

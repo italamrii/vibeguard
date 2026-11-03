@@ -35,6 +35,10 @@ describe('isolateLtrRuns', () => {
     // Code spans and flags.
     ['أضف `.env*` مع --config', 'أضف [`.env*`] مع [--config]'],
     ['حتى 5 محاولات', 'حتى [5] محاولات'],
+    // Found by rendering a real report in Chromium: leading colon and an Arabic parenthetical
+    // opened inside the run must not be swallowed into one isolate.
+    ['عدد الملفات المفحوصة: 171 (47 ملّي ثانية)', 'عدد الملفات المفحوصة: [171] ([47] ملّي ثانية)'],
+    ['الحد (5 محاولات كل 15 دقيقة)', 'الحد ([5] محاولات كل [15] دقيقة)'],
   ])('%s', (input, expected) => {
     expect(show(isolateLtrRuns(input))).toBe(expected);
   });

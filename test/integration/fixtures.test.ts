@@ -157,6 +157,21 @@ describe('report formats on every fixture app', () => {
     }
   });
 
+  it('Markdown contains no raw HTML except our direction wrappers and autolinks', () => {
+    for (const app of built.apps) {
+      for (const locale of ['en', 'ar'] as const) {
+        const md = markdownReporter.render(result(app), opts(locale));
+        const outsideCode = md
+          .replace(/^(`{3,})[\s\S]*?^\1/gm, '') // fenced blocks
+          .replace(/(`+)[^`]*?\1/g, ''); // inline code spans
+        const tags = [...outsideCode.matchAll(/<\/?[a-zA-Z][^>]*>/g)]
+          .map((m) => m[0])
+          .filter((t) => !/^<\/?div( dir="(?:rtl|ltr)")?>$/.test(t) && !/^<https?:\/\//.test(t));
+        expect(tags, `${app} ${locale}`).toEqual([]);
+      }
+    }
+  });
+
   it('Arabic Markdown has no unisolated LTR run on any Arabic line', () => {
     for (const app of built.apps) {
       expect(findUnisolatedLtr(markdownReporter.render(result(app), opts('ar'))), app).toEqual([]);

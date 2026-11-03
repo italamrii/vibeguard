@@ -36,6 +36,18 @@ function mdText(s: string): string {
   return s.replace(/[\\`*_[\]<>|#]/g, (c) => `\\${c}`);
 }
 
+/**
+ * Escape `<` and `>` in prose outside inline code spans, so text such as
+ * "git rm --cached <file>" is shown literally instead of being parsed as an HTML tag (which
+ * browsers swallow and GitHub's sanitizer deletes). Runs after bidi isolation.
+ */
+export function escapeAnglesInProse(s: string): string {
+  return s
+    .split(/(`+[^`]*`+)/)
+    .map((part) => (part.startsWith('`') ? part : part.replace(/</g, '&lt;').replace(/>/g, '&gt;')))
+    .join('');
+}
+
 /** Fenced block whose fence cannot be closed early by the content. */
 function mdFence(code: string, lang: string): string {
   const longest = Math.max(2, ...Array.from(code.matchAll(/`{3,}/g), (m) => m[0].length));
@@ -47,7 +59,7 @@ function mdFence(code: string, lang: string): string {
 export function ruleHelpMarkdown(m: RuleMeta, locale: Locale, headingLevel = 3): string[] {
   const ui = UI[locale];
   const rtl = isRtl(locale);
-  const prose = (s: string): string => (rtl ? isolateLtrRuns(s) : s);
+  const prose = (s: string): string => escapeAnglesInProse(rtl ? isolateLtrRuns(s) : s);
   const code = (s: string): string => (rtl ? `${LRI}${mdCode(s)}${PDI}` : mdCode(s));
   const block = (body: string, lang: string): string =>
     rtl ? `<div dir="ltr">\n\n${mdFence(body, lang)}\n\n</div>` : mdFence(body, lang);
@@ -91,7 +103,7 @@ export const markdownReporter: Reporter = {
     const { locale } = opts;
     const ui = UI[locale];
     const rtl = isRtl(locale);
-    const prose = (s: string): string => (rtl ? isolateLtrRuns(s) : s);
+    const prose = (s: string): string => escapeAnglesInProse(rtl ? isolateLtrRuns(s) : s);
     const code = (s: string): string => (rtl ? `${LRI}${mdCode(s)}${PDI}` : mdCode(s));
     const meta = ruleIndex(result);
     const counts = countFindings(result.findings);
@@ -147,7 +159,9 @@ export const markdownReporter: Reporter = {
       out.push(`## ${prose(ui.diagnosticsTitle)}`, '');
       for (const d of diags) {
         const where = d.file ? `${code(`${d.file}${d.line ? `:${d.line}` : ''}`)} ` : '';
-        out.push(`- **${prose(ui.level[d.level])}** ${where}${renderDiagnostic(d, locale, code)}`);
+        out.push(
+          `- **${prose(ui.level[d.level])}** ${where}${escapeAnglesInProse(renderDiagnostic(d, locale, code))}`,
+        );
       }
       out.push('');
     }
@@ -170,7 +184,7 @@ export const markdownReporter: Reporter = {
         `- **${prose(ui.confidenceLabel)}:** ${prose(ui.confidence[f.confidence])}${f.confidence === 'low' ? ` (${prose(ui.lowConfidenceTag)})` : ''}`,
       ];
       if (f.evidence.length > 0) lines.push(`- **${prose(ui.evidence)}:** ${code(f.evidence)}`);
-      lines.push('', renderMessage(f, m, locale, code), '');
+      lines.push('', escapeAnglesInProse(renderMessage(f, m, locale, code)), '');
       return lines;
     }
   },
