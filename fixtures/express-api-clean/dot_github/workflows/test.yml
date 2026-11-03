@@ -1,0 +1,21 @@
+# Ephemeral database for CI tests: the password only exists for the lifetime of the job.
+name: Test
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: ci-db-pass
+          POSTGRES_DB: app_test
+        ports: ['5432:5432']
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: testroot
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm test

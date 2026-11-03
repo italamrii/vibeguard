@@ -1,0 +1,11 @@
+name: Deploy
+on: { push: { branches: [main] } }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # A real, random production password in a workflow is still reported.
+      # vg-expect: secrets/high-entropy
+      POSTGRES_PASSWORD: {{FAKE:db_password:prodpg}}
+    steps:
+      - run: ./deploy.sh
