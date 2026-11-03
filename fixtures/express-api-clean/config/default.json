@@ -1,0 +1,9 @@
+{
+  "port": 4000,
+  "session": {
+    "cookieName": "sid",
+    "secret": "",
+    "maxAgeSeconds": 86400
+  },
+  "integrity": "sha384-oqVuAfXRKap7fdgcCY5uykM6R9GqQ8K0uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+}

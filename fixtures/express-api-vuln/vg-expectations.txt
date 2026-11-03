@@ -1,0 +1,3 @@
+# Files that cannot hold comments: <path> | <substring on the target line> | <rule-id>
+firebase-service-account.json | "private_key": | secrets/private-key
+config/default.json | "secret" | secrets/high-entropy

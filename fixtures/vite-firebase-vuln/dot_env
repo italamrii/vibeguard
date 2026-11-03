@@ -1,0 +1,10 @@
+# vg-expect: secrets/env-file-committed
+VITE_FIREBASE_API_KEY={{FAKE:google_api:firebase}}
+VITE_FIREBASE_AUTH_DOMAIN=acme-tasks-fake.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=acme-tasks-fake
+# vg-expect: secrets/client-exposed-env
+# vg-expect: secrets/provider-key
+VITE_STRIPE_SECRET_KEY={{FAKE:stripe_live:vite}}
+# vg-expect: secrets/client-exposed-env
+# vg-expect: secrets/high-entropy
+VITE_ADMIN_PASSWORD={{FAKE:password:viteadmin}}
