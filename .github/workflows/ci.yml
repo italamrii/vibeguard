@@ -43,6 +43,100 @@ jobs:
         run: npm run sarif:check
       - name: Self-scan (no secret-shaped literal may enter this repository)
         run: node dist/cli/index.js scan . --config .vibeguard.yml --fail-on low
+      - name: Rule docs are current (every rule has a page with written hand sections)
+        run: npm run docs:rules -- --check
+
+  supply-chain:
+    name: licenses · audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Dependency licenses (fails on anything outside the policy, or a stale docs/dependencies.md)
+        run: npm run licenses:check -- --check
+      - name: npm audit, runtime dependencies (fails on any advisory)
+        run: npm audit --omit=dev --audit-level=low
+      - name: npm audit, all dependencies (summary only; dev tools are not shipped)
+        run: npm audit || true
+
+  package:
+    name: npm package contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Tarball contains only the allowlist and nothing secret-shaped
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          npm run pack:check -- --keep "$RUNNER_TEMP/pkg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: ${{ runner.temp }}/pkg/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  install-smoke:
+    # Install the packed tarball the way a user would, in a clean directory with no access
+    # to this repository's node_modules, and run the installed CLI.
+    name: install packed tarball (Node ${{ matrix.node }})
+    needs: package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Build the fixture apps (needs the repository's dev tooling)
+        run: |
+          npm ci
+          npm run fixtures:build -- --out "$RUNNER_TEMP/fixtures"
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+          path: ${{ runner.temp }}/pkg
+      - name: Install into a clean directory
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir clean && cd clean
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/pkg/*.tgz
+      - name: vibeguard --version, rules, scan
+        working-directory: ${{ runner.temp }}/clean
+        run: |
+          set -u
+          expected=$(node -p "require('$GITHUB_WORKSPACE/package.json').version")
+          actual=$(npx --no-install vibeguard --version)
+          test "$actual" = "$expected" || { echo "version $actual != $expected"; exit 1; }
+          rules=$(npx --no-install vibeguard rules | grep -cE '^(secrets|supabase|endpoints)/')
+          test "$rules" -eq 16 || { echo "expected 16 rules, got $rules"; exit 1; }
+          set +e
+          npx --no-install vibeguard scan "$RUNNER_TEMP/fixtures/next-supabase-vuln" --no-color > vuln.txt
+          vuln=$?
+          npx --no-install vibeguard scan "$RUNNER_TEMP/fixtures/next-supabase-clean" --no-color > clean.txt
+          clean=$?
+          npx --no-install vibeguard scan "$RUNNER_TEMP/fixtures/next-supabase-vuln" --format sarif --output "$RUNNER_TEMP/out.sarif" --fail-on none
+          sarif=$?
+          set -e
+          tail -n 2 vuln.txt clean.txt
+          test "$vuln" -eq 1 || { echo "vulnerable app: expected exit 1, got $vuln"; exit 1; }
+          test "$clean" -eq 0 || { echo "clean app: expected exit 0, got $clean"; exit 1; }
+          test "$sarif" -eq 0 || { echo "sarif: expected exit 0, got $sarif"; exit 1; }
+          node -e "const s=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')); if (s.version !== '2.1.0' || !s.runs[0].results.length) process.exit(1)" "$RUNNER_TEMP/out.sarif"
 
   sql-parser-portability:
     # libpg-query is the real Postgres parser compiled to WebAssembly (ADR-0002). This job
