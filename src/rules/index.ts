@@ -1,4 +1,9 @@
 import type { Rule } from '../core/engine/rule.ts';
+import { clientExposedEnvRule } from './secrets/client-exposed-env.rule.ts';
+import { envFileCommittedRule } from './secrets/env-file-committed.rule.ts';
+import { highEntropyRule } from './secrets/high-entropy.rule.ts';
+import { privateKeyRule } from './secrets/private-key.rule.ts';
+import { providerKeyRule } from './secrets/provider-key.rule.ts';
 
 /**
  * The rule registry. This is the only list of rules; adding a rule means adding its
@@ -7,4 +12,10 @@ import type { Rule } from '../core/engine/rule.ts';
  * There is intentionally no runtime plugin loading: the config file lives in the scanned
  * repository, which may be untrusted, and must never be able to load code.
  */
-export const ALL_RULES: readonly Rule[] = [];
+export const ALL_RULES: readonly Rule[] = [
+  providerKeyRule,
+  privateKeyRule,
+  highEntropyRule,
+  envFileCommittedRule,
+  clientExposedEnvRule,
+] as readonly Rule[];
