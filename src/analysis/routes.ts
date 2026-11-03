@@ -340,6 +340,23 @@ function routeTarget(expr: ts.Expression): { target: string; chainPath?: string 
   return undefined;
 }
 
+/**
+ * Scope key for a server object: the same name bound as a plugin parameter
+ * (`fastify.register(async function (fastify) { … })`) is a different, encapsulated instance
+ * whose hooks must not leak to the outer instance's routes.
+ */
+function scopeKey(name: string, at: ts.Node): string {
+  for (let p: ts.Node = at; !ts.isSourceFile(p); p = p.parent) {
+    if (
+      ts.isFunctionLike(p) &&
+      p.parameters.some((param) => ts.isIdentifier(param.name) && param.name.text === name)
+    ) {
+      return `${name}@${p.pos}`;
+    }
+  }
+  return `${name}@module`;
+}
+
 function expressAndFastify(rel: string, sf: ts.SourceFile): Endpoint[] {
   const known = serverObjects(sf);
   const isServer = (name: string): boolean => known.has(name) || SERVER_NAME.test(name);
@@ -350,18 +367,20 @@ function expressAndFastify(rel: string, sf: ts.SourceFile): Endpoint[] {
   walk(sf, (n) => {
     if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return undefined;
     const method = n.expression.name.text;
-    const t = routeTarget(n.expression.expression);
-    if (!t || !isServer(t.target)) return undefined;
+    const t0 = routeTarget(n.expression.expression);
+    if (!t0 || !isServer(t0.target)) return undefined;
+    const t = { ...t0, target: scopeKey(t0.target, n) };
     const args = [...n.arguments];
 
     if (method === 'use' || method === 'register') {
       const prefix = args[0] ? stringValue(args[0]) : undefined;
-      uses.push({
-        target: t.target,
-        pos: n.getStart(sf),
-        prefix,
-        middleware: prefix === undefined ? args : args.slice(1),
-      });
+      // An inline plugin function passed to register() is encapsulated (Fastify): its hooks
+      // and routes do not apply to sibling routes. Library plugins (required by name) are
+      // typically wrapped with fastify-plugin and do apply.
+      const mw = (prefix === undefined ? args : args.slice(1)).filter(
+        (a) => !(method === 'register' && ts.isFunctionLike(a)),
+      );
+      uses.push({ target: t.target, pos: n.getStart(sf), prefix, middleware: mw });
       return undefined;
     }
     if (method === 'addHook') {
@@ -429,7 +448,7 @@ function expressAndFastify(rel: string, sf: ts.SourceFile): Endpoint[] {
       }
     }
     if (
-      /fastify|instance/i.test(t.target) ||
+      /fastify|instance/i.test(t0.target) ||
       /require\(['"]fastify['"]\)|from ['"]fastify['"]/.test(sf.text)
     )
       kind = 'fastify';
