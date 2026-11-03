@@ -92,3 +92,32 @@ filename order so that the final state wins:
   "unknown" and are not reported on.
 - Storage bucket policies (`storage.objects`) are only checked if the policies appear in an
   exposed schema. The `storage` schema is not exposed by default and is not analysed.
+
+## Endpoints family: what is detected
+
+- Route handlers, API routes, Vercel functions, server actions, and Express/Fastify routes that
+  read or modify data with no authentication signal (`endpoints/unauthenticated-data-access`).
+  Severity depends on whether the access is privileged (service role / admin SDK), direct
+  (ORM/SQL) or user-scoped (RLS applies) ([ADR-0012](adr/0012-endpoint-auth-detection.md)).
+- CORS that allows credentials together with a reflected or wildcard origin, via `cors()`,
+  `@fastify/cors`, manual headers, or `next.config` `headers()`
+  (`endpoints/cors-wildcard-credentials`).
+- Custom login/signup/reset/OTP endpoints and server actions without a rate limiter
+  (`endpoints/auth-route-no-rate-limit`).
+
+## Endpoints family: known limitations
+
+- **An auth call counts if it is present, even if nothing depends on it.** A call whose result
+  is ignored still counts as authentication.
+- **Authorization is not checked.** IDOR, missing role checks and multi-tenant leaks are out of
+  scope for v1.
+- **Calls are followed one level only.** Same-file helpers and local imported functions are
+  followed once. Deeper chains and middleware mounted from another file are not.
+- Sinks are recognised by API shape (Supabase, Firestore, Prisma, Drizzle, Mongoose-style
+  models, `pg`, `sql` tags). Custom data layers (`repo.save()`) are not recognised.
+- Express routers mounted with auth in another file can be reported as unauthenticated (false
+  positive). Add `router.use(auth)` in the router file, or suppress with a reason.
+- Rate limiting is recognised by library or name. An in-house limiter needs
+  `endpoints.rateLimitFunctions`. Limits enforced by the platform (WAF, API gateway) are not
+  visible.
+- `next.config` CORS headers are matched per file, not per `source` path.
