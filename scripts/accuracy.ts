@@ -108,8 +108,13 @@ The clean apps contain one suppressed finding by design: a read-only \`USING (tr
 suppressed in the fixture with a reason, which is the intended workflow for deliberate exceptions.
 `;
   const target = path.join(path.dirname(FIXTURES_DIR), 'docs', 'accuracy.md');
+  const md2 =
+    md +
+    (await realWorldSection(
+      path.join(path.dirname(FIXTURES_DIR), 'docs', 'real-world-validation.json'),
+    ));
   // Format like the rest of the repo so regenerating never breaks `prettier --check`.
-  const formatted = await format(md, { parser: 'markdown', filepath: target });
+  const formatted = await format(md2, { parser: 'markdown', filepath: target });
   await writeFile(target, formatted);
   console.log(formatted);
   if (problems.length > 0) {
@@ -118,4 +123,69 @@ suppressed in the fixture with a reason, which is the intended workflow for deli
   }
 } finally {
   await rm(out, { recursive: true, force: true });
+}
+
+interface Count {
+  ruleId: string;
+  count: number;
+  pattern?: string;
+  severity?: string;
+  confidence?: string;
+  status?: string;
+}
+interface RealWorld {
+  projects: {
+    id: string;
+    scanned: string;
+    stack: string;
+    filesScanned: number;
+    openFindings: Count[];
+    falsePositivesFixed: Count[];
+    falseNegativesFixed: Count[];
+  }[];
+}
+
+/** "Real-world validation": counts only, from docs/real-world-validation.json. */
+async function realWorldSection(file: string): Promise<string> {
+  const { readFile } = await import('node:fs/promises');
+  const data = JSON.parse(await readFile(file, 'utf8')) as RealWorld;
+  const sum = (xs: Count[]): number => xs.reduce((n, x) => n + x.count, 0);
+  const rows = (xs: Count[], extra: (x: Count) => string): string =>
+    xs.length === 0
+      ? '_none_\n'
+      : xs
+          .map((x) => `| ${x.ruleId === '' ? '' : `\`${x.ruleId}\``} | ${x.count} | ${extra(x)} |`)
+          .join('\n') + '\n';
+  const fps = data.projects.flatMap((p) => p.falsePositivesFixed);
+  const fns = data.projects.flatMap((p) => p.falseNegativesFixed);
+  const open = data.projects.flatMap((p) => p.openFindings);
+  let out = `
+## Real-world validation
+
+Scans of real projects, with the owner's permission, read-only. **Counts only**: no project names,
+paths, code or evidence are recorded. Every false positive found is fixed generically (never
+tuned to one project) with a fixture written *before* the fix; see the commit history.
+
+- Projects scanned: **${data.projects.length}** (${data.projects.map((p) => `${p.id}: ${p.filesScanned} files, ${p.stack}`).join('; ')})
+- False positives found and fixed: **${sum(fps)}** across ${new Set(fps.map((x) => x.ruleId)).size} rule(s)
+- Recall gaps fixed: **${sum(fns)}** endpoints whose data access was not recognised (most were authenticated, so this is not ${sum(fns)} missed findings)
+- Findings currently open (after fixes): **${sum(open)}**
+
+### Findings after fixes, per rule
+
+| Rule | Count | Severity / confidence, status |
+| ---- | ----: | ----------------------------- |
+${rows(open, (x) => `${x.severity ?? ''} / ${x.confidence ?? ''}, ${x.status ?? ''}`)}
+### False positives found and fixed
+
+| Rule | Count | Generic pattern |
+| ---- | ----: | --------------- |
+${rows(fps, (x) => x.pattern ?? '')}
+### Recall gaps found and fixed
+
+| Rule | Endpoints affected | Generic pattern |
+| ---- | ----: | --------------- |
+${rows(fns, (x) => x.pattern ?? '')}
+`;
+  return out;
 }

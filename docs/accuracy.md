@@ -55,3 +55,34 @@ Declared with `vg-expect-miss` in the fixtures:
 The clean apps contain one suppressed finding by design: a read-only `USING (true)` policy on
 `public.countries` (public reference data), reported at low severity / low confidence and
 suppressed in the fixture with a reason, which is the intended workflow for deliberate exceptions.
+
+## Real-world validation
+
+Scans of real projects, with the owner's permission, read-only. **Counts only**: no project names,
+paths, code or evidence are recorded. Every false positive found is fixed generically (never
+tuned to one project) with a fixture written _before_ the fix; see the commit history.
+
+- Projects scanned: **1** (P1: 193 files, Next.js App Router, SQL via prepared statements and a SQL template tag)
+- False positives found and fixed: **16** across 2 rule(s)
+- Recall gaps fixed: **20** endpoints whose data access was not recognised (most were authenticated, so this is not 20 missed findings)
+- Findings currently open (after fixes): **1**
+
+### Findings after fixes, per rule
+
+| Rule                                    | Count | Severity / confidence, status                                            |
+| --------------------------------------- | ----: | ------------------------------------------------------------------------ |
+| `endpoints/unauthenticated-data-access` |     1 | medium / low, pending owner review (likely an intentionally public read) |
+
+### False positives found and fixed
+
+| Rule                                    | Count | Generic pattern                                                   |
+| --------------------------------------- | ----: | ----------------------------------------------------------------- |
+| `secrets/high-entropy`                  |     1 | throwaway database password for a CI service container            |
+| `endpoints/unauthenticated-data-access` |    14 | project-specific auth helper named authenticate…() not recognised |
+| `endpoints/unauthenticated-data-access` |     1 | logout endpoint (acts only on the caller's own session)           |
+
+### Recall gaps found and fixed
+
+| Rule                                    | Endpoints affected | Generic pattern                                                                                |
+| --------------------------------------- | -----------------: | ---------------------------------------------------------------------------------------------- |
+| `endpoints/unauthenticated-data-access` |                 20 | data access via prepared statements (D1/SQLite) and SQL tags from a factory was not recognised |

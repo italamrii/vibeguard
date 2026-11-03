@@ -1,0 +1,44 @@
+{
+  "$comment": "Counts only. Never add project names, paths, code or evidence. Rendered into docs/accuracy.md by scripts/accuracy.ts.",
+  "projects": [
+    {
+      "id": "P1",
+      "scanned": "2026-11-03",
+      "stack": "Next.js App Router, SQL via prepared statements and a SQL template tag",
+      "filesScanned": 193,
+      "openFindings": [
+        {
+          "ruleId": "endpoints/unauthenticated-data-access",
+          "count": 1,
+          "severity": "medium",
+          "confidence": "low",
+          "status": "pending owner review (likely an intentionally public read)"
+        }
+      ],
+      "falsePositivesFixed": [
+        {
+          "ruleId": "secrets/high-entropy",
+          "count": 1,
+          "pattern": "throwaway database password for a CI service container"
+        },
+        {
+          "ruleId": "endpoints/unauthenticated-data-access",
+          "count": 14,
+          "pattern": "project-specific auth helper named authenticate…() not recognised"
+        },
+        {
+          "ruleId": "endpoints/unauthenticated-data-access",
+          "count": 1,
+          "pattern": "logout endpoint (acts only on the caller's own session)"
+        }
+      ],
+      "falseNegativesFixed": [
+        {
+          "ruleId": "endpoints/unauthenticated-data-access",
+          "count": 20,
+          "pattern": "data access via prepared statements (D1/SQLite) and SQL tags from a factory was not recognised"
+        }
+      ]
+    }
+  ]
+}
