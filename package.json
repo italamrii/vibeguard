@@ -36,7 +36,9 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "tsx scripts/bench.ts"
+    "bench": "tsx scripts/bench.ts",
+    "fixtures:build": "tsx scripts/build-fixtures.ts",
+    "accuracy": "tsx scripts/accuracy.ts"
   },
   "dependencies": {
     "commander": "14.0.3",
