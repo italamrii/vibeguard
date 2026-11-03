@@ -2,6 +2,7 @@ import type { Rule } from '../core/engine/rule.ts';
 import { authRouteNoRateLimitRule } from './endpoints/auth-route-no-rate-limit.rule.ts';
 import { corsWildcardCredentialsRule } from './endpoints/cors-wildcard-credentials.rule.ts';
 import { unauthenticatedDataAccessRule } from './endpoints/unauthenticated-data-access.rule.ts';
+import { webhookWithoutSignatureRule } from './endpoints/webhook-without-signature.rule.ts';
 import { clientExposedEnvRule } from './secrets/client-exposed-env.rule.ts';
 import { envFileCommittedRule } from './secrets/env-file-committed.rule.ts';
 import { highEntropyRule } from './secrets/high-entropy.rule.ts';
@@ -38,4 +39,5 @@ export const ALL_RULES: readonly Rule[] = [
   unauthenticatedDataAccessRule,
   corsWildcardCredentialsRule,
   authRouteNoRateLimitRule,
+  webhookWithoutSignatureRule,
 ] as readonly Rule[];
